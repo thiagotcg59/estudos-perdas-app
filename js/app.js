@@ -15,6 +15,71 @@ const appState = {
 
 const app = (() => {
 
+  // ══════════════════════════════════════════════════════
+  // COLUMN RESIZE — drag handles between panels
+  // ══════════════════════════════════════════════════════
+  function initColumnResize() {
+    const layout   = document.querySelector('.app-layout');
+    const leftHdl  = document.getElementById('resizeLeft');
+    const rightHdl = document.getElementById('resizeRight');
+    if (!layout || !leftHdl || !rightHdl) return;
+
+    let dragging = null, startX = 0, startLeft = 0, startRight = 0;
+
+    function colWidths() {
+      const cols = getComputedStyle(layout).gridTemplateColumns.split(' ');
+      return { left: parseFloat(cols[0]), right: parseFloat(cols[4]) };
+    }
+
+    function applyWidths(left, right) {
+      left  = Math.max(160, Math.min(520, left));
+      right = Math.max(160, Math.min(520, right));
+      layout.style.gridTemplateColumns = `${left}px 5px 1fr 5px ${right}px`;
+    }
+
+    function onDown(e, handle) {
+      dragging = handle;
+      startX = e.clientX;
+      const w = colWidths();
+      startLeft  = w.left;
+      startRight = w.right;
+      handle.classList.add('dragging');
+      document.body.style.cursor     = 'col-resize';
+      document.body.style.userSelect = 'none';
+      e.preventDefault();
+    }
+
+    function onMove(e) {
+      if (!dragging) return;
+      const dx = e.clientX - startX;
+      if (dragging === leftHdl)  applyWidths(startLeft + dx, startRight);
+      if (dragging === rightHdl) applyWidths(startLeft,      startRight - dx);
+    }
+
+    function onUp() {
+      if (!dragging) return;
+      dragging.classList.remove('dragging');
+      dragging = null;
+      document.body.style.cursor     = '';
+      document.body.style.userSelect = '';
+      // Persist
+      localStorage.setItem('hb_colwidths', layout.style.gridTemplateColumns);
+      // Resize charts to fill new space
+      setTimeout(() => {
+        Object.values(charts.instances).forEach(inst => inst?.resize?.());
+      }, 50);
+    }
+
+    leftHdl.addEventListener('mousedown',  e => onDown(e, leftHdl));
+    rightHdl.addEventListener('mousedown', e => onDown(e, rightHdl));
+    document.addEventListener('mousemove', onMove);
+    document.addEventListener('mouseup',   onUp);
+
+    // Restore saved widths
+    const saved = localStorage.getItem('hb_colwidths');
+    if (saved) layout.style.gridTemplateColumns = saved;
+  }
+
   // ── Debounce ──────────────────────────────────────────
   function debounce(fn, ms) {
     let t;
@@ -375,6 +440,7 @@ const app = (() => {
 
     // Live listeners (small delay to let panel DOM settle)
     setTimeout(initLiveUpdates, 400);
+    initColumnResize();
 
     // Auto-save every 2 min
     setInterval(() => {

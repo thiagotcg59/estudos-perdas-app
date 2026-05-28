@@ -284,9 +284,40 @@ html, body {
 ══════════════════════════════════════════════════════ */
 .app-layout {
   display: grid;
-  grid-template-columns: 240px 1fr 260px;
+  grid-template-columns: 240px 5px 1fr 5px 260px;
   height: calc(100vh - 56px - 28px);
   overflow: hidden;
+}
+
+/* ── Resize handles ───────────────────────────────────── */
+.resize-handle {
+  background: var(--border);
+  cursor: col-resize;
+  position: relative;
+  z-index: 20;
+  transition: background .15s;
+  flex-shrink: 0;
+}
+.resize-handle::after {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 2px;
+  height: 48px;
+  background: var(--border-hi);
+  border-radius: 2px;
+  opacity: 0;
+  transition: opacity .2s;
+}
+.resize-handle:hover,
+.resize-handle.dragging {
+  background: rgba(0,184,212,.25);
+}
+.resize-handle:hover::after,
+.resize-handle.dragging::after {
+  opacity: 1;
 }
 
 .left-panel {
