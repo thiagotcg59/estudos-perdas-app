@@ -32,54 +32,81 @@ const app = (() => {
 
   // ══════════════════════════════════════════════════════
   // BUILD SCALED DATA
-  // Shapes from MOCK, magnitudes from UI inputs
+  //
+  // Fluxo de cálculo (o que cada campo afeta):
+  //
+  //  Multiplicador da fonte  →  escala flowTotal (curva "Medido")
+  //  Vazão Constante Adicional → somada ao flowTotal
+  //  Tabela de consumo (Lig × Cons/dia) → flowConsumption
+  //  haxPer1 (% perdas reais)  → fraciona as perdas totais
+  //  haxPer2 (% perdas aparen.) → fraciona as perdas totais
+  //
+  //  Perdas Totais = flowTotal − flowConsumption
+  //  Perdas Reais  = Perdas Totais × haxPer1/(haxPer1+haxPer2)
+  //  Perdas Apar.  = Perdas Totais × haxPer2/(haxPer1+haxPer2)
   // ══════════════════════════════════════════════════════
   function buildScaledData(params) {
 
-    // ── Consumption from table ───────────────────────
+    const mathAvg = arr => arr.reduce((a,b)=>a+b,0) / arr.length;
+    const scaleArr = (arr, target) => {
+      const a = mathAvg(arr);
+      return a > 0 ? arr.map(v => +(v / a * target).toFixed(3)) : arr.map(() => +target.toFixed(3));
+    };
+
+    // ── 1. Fonte de Vazão: Multiplicador ─────────────
+    // Cada fonte contribui; média dos multiplicadores ativos
+    const activeSources = appState.sources.filter(s => s);
+    const combinedMult = activeSources.length > 0
+      ? activeSources.reduce((s, src) => s + (parseFloat(src.multiplier) || 1), 0) / activeSources.length
+      : 1;
+
+    // Adicional constante (m³/h)
+    const addFlow = parseFloat(params.additionalFlow) || 0;
+
+    // flowTotal = curva medida (MOCK × multiplicador + adicional)
+    const mockTotalAvg = mathAvg(MOCK.flowTotal);
+    const measuredAvg  = mockTotalAvg * combinedMult + addFlow;
+    const flowTotal    = scaleArr(MOCK.flowTotal, measuredAvg);
+
+    // ── 2. Cadastro de Consumo ────────────────────────
     const tableConsumM3h = appState.consumptionData.reduce(
       (s, r) => s + ((r.connections || 0) * (r.avgConsumption || 0) / 24), 0
     );
-    const consumptionM3h = tableConsumM3h > 0 ? tableConsumM3h : 41.70;
+    const consumptionM3h = tableConsumM3h > 0 ? tableConsumM3h : mathAvg(MOCK.flowConsumption);
+    const flowConsumption = scaleArr(MOCK.flowConsumption, consumptionM3h);
 
-    // ── Loss targets from params ─────────────────────
-    // haxPer1 = real loss % of consumption
-    // haxPer2 = apparent loss % of consumption
-    const realLossPct = Math.max(0, params.haxPer1 || 0) / 100;
-    const appLossPct  = Math.max(0, params.haxPer2 || 0) / 100;
-    const realLossM3h = consumptionM3h * realLossPct;
-    const appLossM3h  = consumptionM3h * appLossPct;
+    // ── 3. Perdas = Medido − Consumo ─────────────────
+    const totalAvg   = mathAvg(flowTotal);
+    const lossAvg    = Math.max(0, totalAvg - consumptionM3h);
 
-    // ── Additional constant flow ─────────────────────
-    const addFlow = parseFloat(params.additionalFlow) || 0;
+    // haxPer1 e haxPer2 definem a proporção real × aparente
+    const p1 = Math.max(0.01, params.haxPer1 || 35);
+    const p2 = Math.max(0.01, params.haxPer2 || 10);
+    const realFraction = p1 / (p1 + p2);
+    const appFraction  = p2 / (p1 + p2);
 
-    // ── Source multiplier ────────────────────────────
-    const srcMult = appState.sources.length > 0
-      ? (parseFloat(appState.sources[0].multiplier) || 1) : 1;
+    const realLossAvg = lossAvg * realFraction;
+    const appLossAvg  = lossAvg * appFraction;
 
-    // ── Normalized hourly shapes from MOCK ───────────
-    const avg = arr => arr.reduce((a,b)=>a+b,0) / arr.length;
-    const scale = (arr, target) => {
-      const a = avg(arr);
-      return a > 0 ? arr.map(v => +(v / a * target).toFixed(3)) : arr.map(() => 0);
-    };
+    const flowRealLoss     = scaleArr(MOCK.flowRealLoss,     realLossAvg);
+    const flowApparentLoss = scaleArr(MOCK.flowApparentLoss, appLossAvg);
 
-    const flowConsumption  = scale(MOCK.flowConsumption,  consumptionM3h);
-    const flowRealLoss     = scale(MOCK.flowRealLoss,     realLossM3h);
-    const flowApparentLoss = scale(MOCK.flowApparentLoss, appLossM3h);
-    const flowTotal        = flowConsumption.map((c, i) =>
-      +(c + flowRealLoss[i] + flowApparentLoss[i] + addFlow).toFixed(3));
-    const flowCalibrated   = flowTotal.map(v => +(v * 0.993).toFixed(3));
-    const flowSimulated    = scale(MOCK.flowSimulated, avg(flowTotal) * srcMult);
+    // ── 4. Curvas derivadas ───────────────────────────
+    // Calibrado = soma dos componentes (target do modelo)
+    const flowCalibrated = flowConsumption.map((c, i) =>
+      +(c + flowRealLoss[i] + flowApparentLoss[i]).toFixed(3));
+
+    // Simulado = flowTotal × 0.97 (antes da calibração)
+    const flowSimulated = flowTotal.map(v => +(v * 0.97).toFixed(3));
 
     return {
       ...MOCK,
-      flowTotal,
-      flowSimulated,
-      flowConsumption,
-      flowRealLoss,
-      flowApparentLoss,
-      flowCalibrated
+      flowTotal,       // ← muda com Multiplicador da fonte
+      flowSimulated,   // ← muda com Multiplicador da fonte
+      flowConsumption, // ← muda com tabela de consumo
+      flowRealLoss,    // ← muda com Multiplicador + haxPer1/haxPer2
+      flowApparentLoss,// ← muda com Multiplicador + haxPer1/haxPer2
+      flowCalibrated   // ← muda com tabela de consumo + haxPer1/haxPer2
     };
   }
 

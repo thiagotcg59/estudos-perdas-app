@@ -54,19 +54,25 @@ const ui = (() => {
           </select>
         </div>
         <div class="item-row">
-          <label>Multiplicador</label>
-          <input type="number" class="f-input" value="${data.multiplier}" step="0.01"
-            onchange="ui.updateSource(${data.id},'multiplier',+this.value)">
+          <label title="Fator de correção do macromedidor. Ex: 1.2 = +20% no fluxo medido → escala a curva Medido (Total) no gráfico">
+            Multiplicador ⓘ
+          </label>
+          <input type="number" class="f-input" value="${data.multiplier}" step="0.01" min="0.01" max="5"
+            oninput="ui.updateSource(${data.id},'multiplier',+this.value)">
         </div>
         <div class="item-row">
-          <label>Vazão Min (m³/h)</label>
-          <input type="number" class="f-input" value="${data.flowMin}" step="0.01"
-            onchange="ui.updateSource(${data.id},'flowMin',+this.value)">
+          <label title="Limite inferior operacional do sensor. Usado para alertas de sub-leitura.">
+            Vazão Min (m³/h) ⓘ
+          </label>
+          <input type="number" class="f-input" value="${data.flowMin}" step="0.1"
+            oninput="ui.updateSource(${data.id},'flowMin',+this.value)">
         </div>
         <div class="item-row">
-          <label>Vazão Max (m³/h)</label>
-          <input type="number" class="f-input" value="${data.flowMax}" step="0.01"
-            onchange="ui.updateSource(${data.id},'flowMax',+this.value)">
+          <label title="Limite superior operacional do sensor. Usado para alertas de sobre-leitura.">
+            Vazão Max (m³/h) ⓘ
+          </label>
+          <input type="number" class="f-input" value="${data.flowMax}" step="0.1"
+            oninput="ui.updateSource(${data.id},'flowMax',+this.value)">
         </div>
         <div class="item-row" style="grid-template-columns:auto 1fr auto 1fr">
           <label>Intervalo</label>
