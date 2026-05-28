@@ -271,7 +271,10 @@ const ui = (() => {
 
     Object.entries(map).forEach(([key, elId]) => {
       const el = document.getElementById(elId);
-      if (el && preset[key] !== undefined) el.value = preset[key];
+      if (el && preset[key] !== undefined) {
+        el.value = preset[key];
+        el.dispatchEvent(new Event('input', { bubbles: true })); // trigger live update
+      }
     });
 
     toast(`Preset "${presetName}" aplicado.`, 'info');

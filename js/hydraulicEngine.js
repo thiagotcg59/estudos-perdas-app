@@ -254,11 +254,19 @@ const hydraulicEngine = (() => {
     const totalStats = calcStatistics(inputData.flowTotal);
     const vmn = detectVMN(inputData.flowTotal);
     const normalized = generateNormalizedCurve(inputData.flowTotal);
-    const decomposed = decomposeLosses(inputData.flowTotal, inputData.flowConsumption);
-
-    const totalRealLoss = decomposed.reduce((a, b) => a + b.realLoss, 0) / 24;
-    const totalAppLoss = decomposed.reduce((a, b) => a + b.apparentLoss, 0) / 24;
     const totalConsumption = inputData.flowConsumption.reduce((a,b)=>a+b,0) / 24;
+
+    // Use explicit loss series when provided (from buildScaledData),
+    // fall back to decomposition from flow difference only for raw MOCK data
+    let totalRealLoss, totalAppLoss;
+    if (inputData.flowRealLoss && inputData.flowApparentLoss) {
+      totalRealLoss = inputData.flowRealLoss.reduce((a,b)=>a+b,0) / 24;
+      totalAppLoss  = inputData.flowApparentLoss.reduce((a,b)=>a+b,0) / 24;
+    } else {
+      const decomposed = decomposeLosses(inputData.flowTotal, inputData.flowConsumption);
+      totalRealLoss = decomposed.reduce((a,b)=>a+b.realLoss,0) / 24;
+      totalAppLoss  = decomposed.reduce((a,b)=>a+b.apparentLoss,0) / 24;
+    }
 
     const balanceParams = {
       systemInput: totalStats.volume24h,

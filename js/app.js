@@ -15,50 +15,62 @@ const appState = {
 
 const app = (() => {
 
-  // ── Debounce utility ──────────────────────────────────
+  // ── Debounce ──────────────────────────────────────────
   function debounce(fn, ms) {
-    let timer;
-    return (...args) => { clearTimeout(timer); timer = setTimeout(() => fn(...args), ms); };
+    let t;
+    return (...args) => { clearTimeout(t); t = setTimeout(() => fn(...args), ms); };
+  }
+
+  // ── Flash KPI cards to signal update ─────────────────
+  function flashKPIs() {
+    document.querySelectorAll('.kpi-card').forEach(el => {
+      el.style.transition = 'opacity 0.12s';
+      el.style.opacity = '0.4';
+      setTimeout(() => { el.style.opacity = '1'; }, 140);
+    });
   }
 
   // ══════════════════════════════════════════════════════
-  // BUILD SCALED DATA FROM UI INPUTS
-  // Reacts to: consumption table, param sliders, multipliers
+  // BUILD SCALED DATA
+  // Shapes from MOCK, magnitudes from UI inputs
   // ══════════════════════════════════════════════════════
   function buildScaledData(params) {
 
-    // 1. Consumption from table (m³/h)
+    // ── Consumption from table ───────────────────────
     const tableConsumM3h = appState.consumptionData.reduce(
       (s, r) => s + ((r.connections || 0) * (r.avgConsumption || 0) / 30 / 24), 0
     );
-    const mockAvgConsum = MOCK.flowConsumption.reduce((a, b) => a + b, 0) / 24;
-    const consumScale = (tableConsumM3h > 0 && mockAvgConsum > 0)
-      ? tableConsumM3h / mockAvgConsum : 1;
+    const consumptionM3h = tableConsumM3h > 0 ? tableConsumM3h : 41.70;
 
-    // 2. Loss percentages from haxPer1 (real) and haxPer2 (apparent)
-    const realLossPct  = Math.min(0.80, Math.max(0.01, params.haxPer1 / 100));
-    const appLossPct   = Math.min(0.80, Math.max(0.01, params.haxPer2 / 100));
-    const mockTotalAvg = MOCK.flowTotal.reduce((a, b) => a + b, 0) / 24;
-    const mockRealAvg  = MOCK.flowRealLoss.reduce((a, b) => a + b, 0) / 24;
-    const mockAppAvg   = MOCK.flowApparentLoss.reduce((a, b) => a + b, 0) / 24;
-    const realScale    = mockRealAvg  > 0 ? (mockTotalAvg * realLossPct) / mockRealAvg  : 1;
-    const appScale     = mockAppAvg   > 0 ? (mockTotalAvg * appLossPct)  / mockAppAvg   : 1;
+    // ── Loss targets from params ─────────────────────
+    // haxPer1 = real loss % of consumption
+    // haxPer2 = apparent loss % of consumption
+    const realLossPct = Math.max(0, params.haxPer1 || 0) / 100;
+    const appLossPct  = Math.max(0, params.haxPer2 || 0) / 100;
+    const realLossM3h = consumptionM3h * realLossPct;
+    const appLossM3h  = consumptionM3h * appLossPct;
 
-    // 3. Source multiplier (first source or 1.0)
+    // ── Additional constant flow ─────────────────────
+    const addFlow = parseFloat(params.additionalFlow) || 0;
+
+    // ── Source multiplier ────────────────────────────
     const srcMult = appState.sources.length > 0
       ? (parseFloat(appState.sources[0].multiplier) || 1) : 1;
 
-    // 4. Additional constant flow (m³/h)
-    const addFlow = parseFloat(params.additionalFlow) || 0;
+    // ── Normalized hourly shapes from MOCK ───────────
+    const avg = arr => arr.reduce((a,b)=>a+b,0) / arr.length;
+    const scale = (arr, target) => {
+      const a = avg(arr);
+      return a > 0 ? arr.map(v => +(v / a * target).toFixed(3)) : arr.map(() => 0);
+    };
 
-    // Build scaled series
-    const flowConsumption  = MOCK.flowConsumption.map(v  => +(v * consumScale).toFixed(2));
-    const flowRealLoss     = MOCK.flowRealLoss.map(v     => +(v * realScale).toFixed(2));
-    const flowApparentLoss = MOCK.flowApparentLoss.map(v => +(v * appScale).toFixed(2));
-    const flowTotal = flowConsumption.map((c, i) =>
-      +(c + flowRealLoss[i] + flowApparentLoss[i] + addFlow).toFixed(2));
-    const flowCalibrated = flowTotal.map(v => +(v * 0.993).toFixed(2));
-    const flowSimulated  = MOCK.flowSimulated.map(v => +(v * srcMult).toFixed(2));
+    const flowConsumption  = scale(MOCK.flowConsumption,  consumptionM3h);
+    const flowRealLoss     = scale(MOCK.flowRealLoss,     realLossM3h);
+    const flowApparentLoss = scale(MOCK.flowApparentLoss, appLossM3h);
+    const flowTotal        = flowConsumption.map((c, i) =>
+      +(c + flowRealLoss[i] + flowApparentLoss[i] + addFlow).toFixed(3));
+    const flowCalibrated   = flowTotal.map(v => +(v * 0.993).toFixed(3));
+    const flowSimulated    = scale(MOCK.flowSimulated, avg(flowTotal) * srcMult);
 
     return {
       ...MOCK,
@@ -72,65 +84,80 @@ const app = (() => {
   }
 
   // ══════════════════════════════════════════════════════
-  // LIVE UPDATE — silent, no loading screen (debounced)
+  // SYNC CONSUMPTION TABLE → appState (before each calc)
+  // ══════════════════════════════════════════════════════
+  function syncConsumptionFromDOM() {
+    document.querySelectorAll('#consumptionBody tr[id^="crow-"]').forEach(tr => {
+      const id = +tr.id.replace('crow-', '');
+      const row = appState.consumptionData.find(r => r.id === id);
+      if (!row) return;
+      const inputs = tr.querySelectorAll('input[type="number"], input[type="text"]');
+      if (inputs[0]) row.category       = inputs[0].value;
+      if (inputs[1]) row.connections    = +inputs[1].value || 0;
+      if (inputs[2]) row.avgConsumption = +inputs[2].value || 0;
+    });
+  }
+
+  // ══════════════════════════════════════════════════════
+  // LIVE UPDATE — 500ms debounce, no loading screen
   // ══════════════════════════════════════════════════════
   function liveUpdate() {
     try {
+      syncConsumptionFromDOM();
       const params = gatherParams();
       const scaledData = buildScaledData(params);
-      const analysis = hydraulicEngine.runFullAnalysis(scaledData, params);
+      const analysis   = hydraulicEngine.runFullAnalysis(scaledData, params);
+
       appState.lastAnalysis = analysis;
       appState.currentData  = scaledData;
 
       charts.updateMainChart(scaledData);
       ui.updateKPIs(analysis.kpis);
       ui.updateVMNDisplay(analysis.vmn);
+      ui.updateConsumptionStats();
       ui.updateLastCalc();
+      flashKPIs();
     } catch (err) {
-      console.warn('[LiveUpdate]', err.message);
+      console.warn('[LiveUpdate]', err.message, err);
     }
   }
 
-  const debouncedLiveUpdate = debounce(liveUpdate, 500);
+  const debouncedUpdate = debounce(liveUpdate, 500);
 
   // ══════════════════════════════════════════════════════
-  // ATTACH LIVE UPDATE LISTENERS
+  // INIT LIVE LISTENERS
   // ══════════════════════════════════════════════════════
   function initLiveUpdates() {
-    // Parameter inputs
-    const paramIds = [
+    // Param inputs
+    [
       'p_haxPer1','p_haxPer2','p_E1','p_diBloco',
       'p_pEstad1','p_diZona','p_autoPri','p_dias',
       'p_reservoir','additionalFlow'
-    ];
-    paramIds.forEach(id => {
-      document.getElementById(id)?.addEventListener('input', debouncedLiveUpdate);
+    ].forEach(id => {
+      const el = document.getElementById(id);
+      if (el) el.addEventListener('input', debouncedUpdate);
     });
 
-    // Consumption table — delegate to tbody
-    document.getElementById('consumptionBody')?.addEventListener('input', () => {
-      // Sync state from DOM before recalculating
-      document.querySelectorAll('#consumptionBody tr').forEach(tr => {
-        const idMatch = tr.id?.match(/crow-(\d+)/);
-        if (!idMatch) return;
-        const rowId = +idMatch[1];
-        const row = appState.consumptionData.find(r => r.id === rowId);
-        if (!row) return;
-        const inputs = tr.querySelectorAll('input');
-        if (inputs[0]) row.category      = inputs[0].value;
-        if (inputs[1]) row.connections   = +inputs[1].value || 0;
-        if (inputs[2]) row.avgConsumption= +inputs[2].value || 0;
-      });
-      ui.updateConsumptionStats();
-      debouncedLiveUpdate();
-    });
+    // Consumption table (delegate to tbody)
+    const tbody = document.getElementById('consumptionBody');
+    if (tbody) {
+      tbody.addEventListener('input',  debouncedUpdate);
+      tbody.addEventListener('change', debouncedUpdate);
+    }
 
-    // Sources list — multiplier changes
-    document.getElementById('sourcesList')?.addEventListener('input', debouncedLiveUpdate);
+    // Sources list (multiplier, flow min/max)
+    const srcList = document.getElementById('sourcesList');
+    if (srcList) {
+      srcList.addEventListener('input',  debouncedUpdate);
+      srcList.addEventListener('change', debouncedUpdate);
+    }
+
+    // Preset buttons already call ui.applyPreset() → that calls debouncedUpdate via param inputs
+    console.log('[HydroBalance] Live update listeners ready.');
   }
 
   // ══════════════════════════════════════════════════════
-  // FULL ANALYSIS (button "Executar Análise")
+  // FULL ANALYSIS (Executar Análise button)
   // ══════════════════════════════════════════════════════
   function runAnalysis() {
     ui.showLoading('Executando análise hidráulica...', 2200);
@@ -138,8 +165,9 @@ const app = (() => {
 
     setTimeout(() => {
       try {
+        syncConsumptionFromDOM();
         const scaledData = buildScaledData(params);
-        const analysis = hydraulicEngine.runFullAnalysis(scaledData, params);
+        const analysis   = hydraulicEngine.runFullAnalysis(scaledData, params);
         appState.lastAnalysis = analysis;
         appState.currentData  = scaledData;
 
@@ -150,14 +178,15 @@ const app = (() => {
         ui.updateReservoirTable(analysis.reservoirBalance);
         charts.updateReservoirChart(analysis.reservoirBalance);
         ui.renderInsights(analysis.insights);
+        ui.updateConsumptionStats();
         ui.updateLastCalc();
-
+        flashKPIs();
         ui.hideLoading();
-        ui.toast(`Análise concluída — Índice de perdas: ${analysis.kpis.lossIndex.toFixed(1)}%`, 'success');
+        ui.toast(`Análise concluída — Perdas: ${analysis.kpis.lossIndex.toFixed(1)}%`, 'success');
       } catch (err) {
         ui.hideLoading();
-        ui.toast('Erro na análise: ' + err.message, 'error');
-        console.error('[HydroBalance] runAnalysis:', err);
+        ui.toast('Erro: ' + err.message, 'error');
+        console.error('[runAnalysis]', err);
       }
     }, 2300);
   }
@@ -166,6 +195,7 @@ const app = (() => {
   // CALCULATE BALANCE (panel button)
   // ══════════════════════════════════════════════════════
   function calculateBalance() {
+    syncConsumptionFromDOM();
     const params = gatherParams();
     ui.showLoading('Calculando balanço...', 900);
 
@@ -181,13 +211,15 @@ const app = (() => {
         ui.updateKPIs(analysis.kpis);
         ui.updateVMNDisplay(analysis.vmn);
         ui.updateReservoirTable(analysis.reservoirBalance);
+        ui.updateConsumptionStats();
         ui.updateLastCalc();
-
+        flashKPIs();
         ui.hideLoading();
         ui.toast('Balanço calculado.', 'success');
       } catch (err) {
         ui.hideLoading();
         ui.toast('Erro: ' + err.message, 'error');
+        console.error('[calculateBalance]', err);
       }
     }, 1000);
   }
@@ -197,46 +229,44 @@ const app = (() => {
   // ══════════════════════════════════════════════════════
   function refreshInsights() {
     const data = appState.currentData || MOCK;
-    const insights = hydraulicEngine.generateInsights(data);
-    ui.renderInsights(insights);
+    ui.renderInsights(hydraulicEngine.generateInsights(data));
     ui.toast('Insights atualizados.', 'info', 2000);
   }
 
   // ══════════════════════════════════════════════════════
-  // RECALCULATE FROM SOURCES (CSV import)
+  // RECALCULATE FROM IMPORTED SOURCES
   // ══════════════════════════════════════════════════════
   function recalculateFromSources() {
     if (Object.keys(appState.sourceSeries).length === 0) return;
     const combined = Array(24).fill(0);
     let count = 0;
-    Object.values(appState.sourceSeries).forEach(series => {
-      series.forEach((v, i) => { combined[i] += v; });
+    Object.values(appState.sourceSeries).forEach(s => {
+      s.forEach((v, i) => { combined[i] += v; });
       count++;
     });
-    const merged = combined.map(v => +(v / Math.max(1, count)).toFixed(3));
-    MOCK.flowTotal.splice(0, 24, ...merged);
-    ui.toast('Séries de fontes recalculadas.', 'info');
-    debouncedLiveUpdate();
+    MOCK.flowTotal.splice(0, 24, ...combined.map(v => +(v / Math.max(1, count)).toFixed(3)));
+    ui.toast('Fontes recalculadas.', 'info');
+    liveUpdate();
   }
 
   // ══════════════════════════════════════════════════════
-  // GATHER PARAMS FROM UI
+  // GATHER UI PARAMS
   // ══════════════════════════════════════════════════════
   function gatherParams() {
-    const get = id => +(document.getElementById(id)?.value || 0);
+    const n = id => +(document.getElementById(id)?.value || 0);
     return {
       n1: 0.5,
-      haxPer1: get('p_haxPer1'),
-      haxPer2: get('p_haxPer2'),
-      E1: get('p_E1'),
-      diBloco: get('p_diBloco'),
-      pEstad1: get('p_pEstad1'),
-      diZona: get('p_diZona'),
-      autoPri: get('p_autoPri'),
-      dias: get('p_dias'),
-      reservoirPct: get('p_reservoir'),
-      additionalFlow: get('additionalFlow'),
-      connections: appState.consumptionData.reduce((s, r) => s + (r.connections || 0), 0) || 2432,
+      haxPer1:       n('p_haxPer1'),
+      haxPer2:       n('p_haxPer2'),
+      E1:            n('p_E1'),
+      diBloco:       n('p_diBloco'),
+      pEstad1:       n('p_pEstad1'),
+      diZona:        n('p_diZona'),
+      autoPri:       n('p_autoPri'),
+      dias:          n('p_dias'),
+      reservoirPct:  n('p_reservoir'),
+      additionalFlow:n('additionalFlow'),
+      connections:   appState.consumptionData.reduce((s,r)=>s+(r.connections||0),0) || 2432,
       reservoirVolume: 500
     };
   }
@@ -245,65 +275,61 @@ const app = (() => {
   // PROJECT SAVE / LOAD
   // ══════════════════════════════════════════════════════
   function saveProject() {
-    const projectName = document.getElementById('projectName')?.value || 'Projeto';
-    const project = {
-      version: '2.1', projectName,
+    const name = document.getElementById('projectName')?.value || 'Projeto';
+    const proj = {
+      version: '2.1', projectName: name,
       savedAt: new Date().toISOString(),
       consumptionData: appState.consumptionData,
       sources: appState.sources,
       pressurePoints: appState.pressurePoints,
       params: gatherParams()
     };
-    localStorage.setItem(`hydrobalance_${projectName.replace(/\s+/g,'_')}`, JSON.stringify(project));
+    localStorage.setItem(`hb_${name.replace(/\s+/g,'_')}`, JSON.stringify(proj));
     exportModule.exportJSON();
-    ui.toast(`Projeto "${projectName}" salvo.`, 'success');
+    ui.toast(`Projeto "${name}" salvo.`, 'success');
     appState.projectDirty = false;
   }
 
   function loadProject() {
-    const input = document.createElement('input');
-    input.type = 'file'; input.accept = '.json';
-    input.onchange = e => {
-      const file = e.target.files[0];
-      if (!file) return;
-      const reader = new FileReader();
-      reader.onload = ev => {
-        const result = parser.parseProjectJSON(ev.target.result);
-        if (result.error) { ui.toast(result.error, 'error'); return; }
-        const data = result.data;
-        const nameEl = document.getElementById('projectName');
-        if (nameEl && data.projectName) nameEl.value = data.projectName;
-        if (data.consumptionData) {
+    const inp = document.createElement('input');
+    inp.type = 'file'; inp.accept = '.json';
+    inp.onchange = e => {
+      const f = e.target.files[0]; if (!f) return;
+      const r = new FileReader();
+      r.onload = ev => {
+        const res = parser.parseProjectJSON(ev.target.result);
+        if (res.error) { ui.toast(res.error, 'error'); return; }
+        const d = res.data;
+        const el = document.getElementById('projectName');
+        if (el && d.projectName) el.value = d.projectName;
+        if (d.consumptionData) {
           document.getElementById('consumptionBody').innerHTML = '';
           appState.consumptionData = [];
-          data.consumptionData.forEach(row => {
-            appState.consumptionData.push(row);
-            ui.renderConsumptionRow(row);
-          });
+          d.consumptionData.forEach(row => { appState.consumptionData.push(row); ui.renderConsumptionRow(row); });
           ui.updateConsumptionStats();
         }
-        ui.toast(`Projeto "${data.projectName || 'importado'}" carregado.`, 'success');
+        ui.toast(`"${d.projectName || 'projeto'}" carregado.`, 'success');
         runAnalysis();
       };
-      reader.readAsText(file);
+      r.readAsText(f);
     };
-    input.click();
+    inp.click();
   }
 
   // ══════════════════════════════════════════════════════
   // INIT
   // ══════════════════════════════════════════════════════
   function init() {
-    ui.init();
+    ui.init(); // populates appState.consumptionData from MOCK
 
     const params = gatherParams();
-    const initialData = buildScaledData(params);
-    appState.currentData = initialData;
+    const initData = buildScaledData(params);
+    appState.currentData = initData;
 
-    const analysis = hydraulicEngine.runFullAnalysis(initialData, { n1: 0.5, connections: 2432, reservoirVolume: 500 });
+    const analysis = hydraulicEngine.runFullAnalysis(initData, { n1: 0.5, connections: 2432, reservoirVolume: 500 });
     appState.lastAnalysis = analysis;
 
-    charts.initAll(initialData, analysis.reservoirBalance);
+    charts.initAll(initData, analysis.reservoirBalance);
     ui.updateKPIs(analysis.kpis);
     ui.updateVMNDisplay(analysis.vmn);
     ui.updateReservoirTable(analysis.reservoirBalance);
@@ -311,53 +337,41 @@ const app = (() => {
 
     if (typeof lucide !== 'undefined') lucide.createIcons();
 
-    // Restore autosave name
+    // Auto-save restore
     try {
-      const saved = localStorage.getItem('hydrobalance_autosave');
-      if (saved) {
-        const proj = JSON.parse(saved);
-        if (proj.projectName) {
-          const el = document.getElementById('projectName');
-          if (el) el.value = proj.projectName;
-        }
+      const sv = JSON.parse(localStorage.getItem('hb_autosave') || '{}');
+      if (sv.projectName) {
+        const el = document.getElementById('projectName');
+        if (el) el.value = sv.projectName;
       }
     } catch (_) {}
 
-    // Live update listeners (after UI is populated)
-    setTimeout(initLiveUpdates, 300);
+    // Live listeners (small delay to let panel DOM settle)
+    setTimeout(initLiveUpdates, 400);
 
     // Auto-save every 2 min
     setInterval(() => {
-      if (appState.projectDirty) {
-        try {
-          localStorage.setItem('hydrobalance_autosave', JSON.stringify({
-            version: '2.1',
-            projectName: document.getElementById('projectName')?.value || 'Projeto',
-            savedAt: new Date().toISOString(),
-            consumptionData: appState.consumptionData,
-            sources: appState.sources
-          }));
-        } catch (_) {}
-        appState.projectDirty = false;
-      }
+      if (!appState.projectDirty) return;
+      try {
+        localStorage.setItem('hb_autosave', JSON.stringify({
+          projectName: document.getElementById('projectName')?.value || 'Projeto',
+          consumptionData: appState.consumptionData,
+          sources: appState.sources
+        }));
+      } catch (_) {}
+      appState.projectDirty = false;
     }, 120000);
 
     document.addEventListener('change', () => { appState.projectDirty = true; });
 
-    ui.toast('HydroBalance AI iniciado. Altere qualquer campo para atualização automática.', 'info', 5000);
+    ui.toast('HydroBalance AI pronto. Altere qualquer campo — os dados atualizam automaticamente.', 'info', 5000);
   }
 
   return {
-    init,
-    runAnalysis,
-    calculateBalance,
-    refreshInsights,
-    recalculateFromSources,
-    saveProject,
-    loadProject,
-    gatherParams,
-    buildScaledData,
-    liveUpdate
+    init, runAnalysis, calculateBalance,
+    refreshInsights, recalculateFromSources,
+    saveProject, loadProject,
+    gatherParams, buildScaledData, liveUpdate
   };
 })();
 
@@ -365,14 +379,13 @@ const app = (() => {
 document.addEventListener('DOMContentLoaded', () => {
   app.init();
 
-  // Keyboard shortcuts
   document.addEventListener('keydown', e => {
-    if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') { e.preventDefault(); app.runAnalysis(); }
-    if ((e.ctrlKey || e.metaKey) && e.key === 's')     { e.preventDefault(); app.saveProject(); }
-    if ((e.ctrlKey || e.metaKey) && e.key === 'e')     { e.preventDefault(); exportModule.exportCSV('all'); }
-    if (e.key === 'Escape') ui.closeModal();
+    if ((e.ctrlKey||e.metaKey) && e.key==='Enter') { e.preventDefault(); app.runAnalysis(); }
+    if ((e.ctrlKey||e.metaKey) && e.key==='s')     { e.preventDefault(); app.saveProject(); }
+    if ((e.ctrlKey||e.metaKey) && e.key==='e')     { e.preventDefault(); exportModule.exportCSV('all'); }
+    if (e.key==='Escape') ui.closeModal();
   });
 
   console.log('%c HydroBalance AI v2.1 ', 'background:#00838f;color:white;font-size:14px;padding:4px 10px;border-radius:4px');
-  console.log('%c Ctrl+Enter: Executar | Ctrl+S: Salvar | Ctrl+E: Exportar', 'color:#00bcd4;font-size:11px');
+  console.log('%c Ctrl+Enter=Analisar | Ctrl+S=Salvar | Ctrl+E=Exportar', 'color:#00bcd4;font-size:11px');
 });
