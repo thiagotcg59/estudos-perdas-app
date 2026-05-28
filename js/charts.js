@@ -19,6 +19,7 @@ const charts = (() => {
     return {
       responsive: true,
       maintainAspectRatio: false,
+      layout: { padding: { bottom: 8 } },
       animation: { duration: 600, easing: 'easeInOutQuart' },
       interaction: { mode: 'index', intersect: false },
       plugins: {
@@ -55,7 +56,7 @@ const charts = (() => {
       scales: {
         x: {
           grid: { color: DEFAULTS.gridColor, drawTicks: false },
-          ticks: { color: DEFAULTS.color, font: DEFAULTS.font, maxRotation: 45 },
+          ticks: { color: DEFAULTS.color, font: DEFAULTS.font, maxRotation: 45, padding: 6 },
           border: { color: DEFAULTS.tickColor }
         },
         y: {

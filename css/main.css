@@ -787,11 +787,11 @@ html, body {
 }
 
 .chart-wrap {
-  padding: 10px;
-  height: 280px;
+  padding: 10px 12px 24px;   /* extra bottom for x-axis labels */
+  height: 320px;
 }
-.chart-wrap--sm { height: 150px; }
-.chart-wrap--xs { height: 120px; }
+.chart-wrap--sm { height: 160px; padding: 8px 10px 20px; }
+.chart-wrap--xs { height: 130px; padding: 6px 8px 16px; }
 canvas { display: block; width: 100% !important; height: 100% !important; }
 
 .reservoir-layout {
