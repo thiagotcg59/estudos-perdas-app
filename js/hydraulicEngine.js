@@ -10,7 +10,7 @@ const hydraulicEngine = (() => {
       systemInput,       // m³/day  — total distributed
       billedConsumption, // m³/day  — metered + authorized
       apparentLossRate,  // fraction (e.g. 0.05)
-      realLossBase,      // L/s     — base real loss (from VMN)
+      realLossBase,      // m³/h   — base real loss (from VMN)
       n1,                // FAVAD exponent
       avgPressure,       // mca     — average zone pressure
       refPressure        // mca     — reference pressure for N1
@@ -65,8 +65,8 @@ const hydraulicEngine = (() => {
     const vmnIndex = flowSeries.indexOf(vmnValue);
     const vmnHour = vmnIndex;
 
-    // Night consumption estimate (0.6 L/s per 1000 connections typical)
-    const nightConsumption = 0.0006 * 2432; // L/s
+    // Night consumption estimate (2.16 m³/h per 1000 connections typical)
+    const nightConsumption = 0.00216 * 2432; // m³/h
     const realLossEstimate = Math.max(0, vmnValue - nightConsumption);
 
     return {
@@ -117,7 +117,7 @@ const hydraulicEngine = (() => {
       max: +max.toFixed(3),
       min: +min.toFixed(3),
       peakFactor: +(max / mean).toFixed(3),
-      volume24h: +(mean * 3600 * 24 / 1000).toFixed(1)  // m³
+      volume24h: +(mean * 24).toFixed(1)  // m³/h × 24h = m³/dia
     };
   }
 
@@ -178,7 +178,7 @@ const hydraulicEngine = (() => {
       insights.push({
         type: 'danger',
         icon: 'alert-octagon',
-        text: `Possível excesso de perdas reais detectado entre ${vmn.hourLabel}. VMN: ${vmn.vmn.toFixed(1)} L/s com ${(vmnRatio*100).toFixed(0)}% de perdas estimadas.`
+        text: `Possível excesso de perdas reais detectado entre ${vmn.hourLabel}. VMN: ${vmn.vmn.toFixed(1)} m³/h com ${(vmnRatio*100).toFixed(0)}% de perdas estimadas.`
       });
     }
 
@@ -262,7 +262,7 @@ const hydraulicEngine = (() => {
 
     const balanceParams = {
       systemInput: totalStats.volume24h,
-      billedConsumption: totalConsumption * 3600 * 24 / 1000,
+      billedConsumption: totalConsumption * 24,
       apparentLossRate: 0.192,
       realLossBase: totalRealLoss,
       n1: params.n1 || 0.5,

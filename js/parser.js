@@ -107,7 +107,7 @@ const parser = (() => {
     const timeCol = headers.find(h => timeCols.some(tc => h.includes(tc)));
 
     if (!flowCol) {
-      return { error: 'Coluna de vazão não identificada. Esperado: vazao, flow, Q, L/s' };
+      return { error: 'Coluna de vazão não identificada. Esperado: vazao, flow, Q, m3h' };
     }
 
     const series = rows.map(r => ({

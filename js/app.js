@@ -149,9 +149,8 @@ const app = (() => {
     });
 
     const additionalFlow = +(document.getElementById('additionalFlow')?.value || 0);
-    const additionalLS = additionalFlow / 3.6; // m³/h → L/s
 
-    const merged = combined.map(v => +(v / Math.max(1, count) + additionalLS).toFixed(3));
+    const merged = combined.map(v => +(v / Math.max(1, count) + additionalFlow).toFixed(3));
 
     // Update MOCK data (in-memory) with new series
     MOCK.flowTotal.splice(0, 24, ...merged);

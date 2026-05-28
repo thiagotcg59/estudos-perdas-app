@@ -59,12 +59,12 @@ const ui = (() => {
             onchange="ui.updateSource(${data.id},'multiplier',+this.value)">
         </div>
         <div class="item-row">
-          <label>Vazão Min (L/s)</label>
+          <label>Vazão Min (m³/h)</label>
           <input type="number" class="f-input" value="${data.flowMin}" step="0.01"
             onchange="ui.updateSource(${data.id},'flowMin',+this.value)">
         </div>
         <div class="item-row">
-          <label>Vazão Max (L/s)</label>
+          <label>Vazão Max (m³/h)</label>
           <input type="number" class="f-input" value="${data.flowMax}" step="0.01"
             onchange="ui.updateSource(${data.id},'flowMax',+this.value)">
         </div>
@@ -234,7 +234,7 @@ const ui = (() => {
   function updateConsumptionStats() {
     const totalConnections = appState.consumptionData.reduce((s, r) => s + (r.connections || 0), 0);
     const microTotal = appState.consumptionData.reduce((s, r) =>
-      s + ((r.connections || 0) * (r.avgConsumption || 0) / 30 / 24 / 3.6), 0); // m³/mês → L/s
+      s + ((r.connections || 0) * (r.avgConsumption || 0) / 30 / 24), 0); // m³/mês → m³/h
 
     const el1 = document.getElementById('totalConnectionsDisplay');
     const el2 = document.getElementById('microTotalDisplay');
@@ -243,7 +243,7 @@ const ui = (() => {
     const el5 = document.getElementById('statusConnections');
 
     if (el1) el1.innerHTML = `Lig. (Auto): <strong>${totalConnections.toLocaleString('pt-BR')}</strong>`;
-    if (el2) el2.innerHTML = `Micro Total: <strong>${microTotal.toFixed(4)}</strong> L/s`;
+    if (el2) el2.innerHTML = `Micro Total: <strong>${microTotal.toFixed(4)}</strong> m³/h`;
     if (el3) el3.textContent = totalConnections.toLocaleString('pt-BR');
     if (el4) el4.textContent = microTotal.toFixed(4);
     if (el5) el5.textContent = `${totalConnections.toLocaleString('pt-BR')} Ligações`;
@@ -289,8 +289,8 @@ const ui = (() => {
     setEl('kpiLossIndex', fmt(kpis.lossIndex, 1));
 
     // Volume summary
-    const vReal = (kpis.realLoss * 3600 * 24 / 1000).toFixed(0);
-    const vApp = (kpis.apparentLoss * 3600 * 24 / 1000).toFixed(0);
+    const vReal = (kpis.realLoss * 24).toFixed(0);
+    const vApp = (kpis.apparentLoss * 24).toFixed(0);
     const vTot = (parseFloat(vReal) + parseFloat(vApp)).toFixed(0);
     const vIn = kpis.volume24h || 1897;
 
@@ -303,10 +303,10 @@ const ui = (() => {
   }
 
   function updateVMNDisplay(vmn) {
-    setEl('vmnDetected', `${parseFloat(vmn.vmn).toFixed(1)} L/s`);
+    setEl('vmnDetected', `${parseFloat(vmn.vmn).toFixed(1)} m³/h`);
     setEl('vmnTime', vmn.hourLabel);
-    setEl('vmnNight', `${vmn.nightConsumption} L/s`);
-    setEl('vmnRealLoss', `${vmn.realLossEstimate} L/s`);
+    setEl('vmnNight', `${vmn.nightConsumption} m³/h`);
+    setEl('vmnRealLoss', `${vmn.realLossEstimate} m³/h`);
   }
 
   function updateLastCalc() {

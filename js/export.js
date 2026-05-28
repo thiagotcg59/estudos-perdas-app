@@ -34,11 +34,11 @@ const exportModule = (() => {
       if (!data) { ui.toast('Execute uma análise antes de exportar.', 'warning'); return; }
       const rows = [
         ['Componente', 'Volume_m3_dia', 'Percentual'],
-        ['Perda Real', (data.kpis.realLoss * 86.4).toFixed(1), (data.balance.lossIndex * 0.65).toFixed(1)],
-        ['Perda Aparente', (data.kpis.apparentLoss * 86.4).toFixed(1), (data.balance.lossIndex * 0.35).toFixed(1)],
-        ['Total Perdas', ((data.kpis.realLoss + data.kpis.apparentLoss) * 86.4).toFixed(1), data.balance.lossIndex.toFixed(1)],
-        ['Consumo Efetivo', (data.kpis.consumption * 86.4).toFixed(1), ((data.kpis.consumption / data.kpis.avgFlow) * 100).toFixed(1)],
-        ['Entrada Sistema', (data.kpis.avgFlow * 86.4).toFixed(1), '100.0']
+        ['Perda Real', (data.kpis.realLoss * 24).toFixed(1), (data.balance.lossIndex * 0.65).toFixed(1)],
+        ['Perda Aparente', (data.kpis.apparentLoss * 24).toFixed(1), (data.balance.lossIndex * 0.35).toFixed(1)],
+        ['Total Perdas', ((data.kpis.realLoss + data.kpis.apparentLoss) * 24).toFixed(1), data.balance.lossIndex.toFixed(1)],
+        ['Consumo Efetivo', (data.kpis.consumption * 24).toFixed(1), ((data.kpis.consumption / data.kpis.avgFlow) * 100).toFixed(1)],
+        ['Entrada Sistema', (data.kpis.avgFlow * 24).toFixed(1), '100.0']
       ];
       download(rows.map(r => r.join(';')).join('\n'), `hydrobalance_resumo_${ts}.csv`, 'text/csv;charset=utf-8;');
       ui.toast('Resumo exportado em CSV.', 'success');
@@ -46,8 +46,8 @@ const exportModule = (() => {
     }
 
     // Full 24h series export
-    const header = ['Hora', 'Vazao_Total_Ls', 'Vazao_Simulada_Ls', 'Vazao_Calibrada_Ls',
-                    'Consumo_Efetivo_Ls', 'Perda_Real_Ls', 'Perda_Aparente_Ls',
+    const header = ['Hora', 'Vazao_Total_m3h', 'Vazao_Simulada_m3h', 'Vazao_Calibrada_m3h',
+                    'Consumo_Efetivo_m3h', 'Perda_Real_m3h', 'Perda_Aparente_m3h',
                     'Pressao_P01_mca', 'Pressao_P02_mca', 'Nivel_Reserv_pct'].join(';');
 
     const rows = mockData.hours.map((h, i) => [
@@ -136,7 +136,7 @@ const exportModule = (() => {
  Projeto: ${projectName}
  Exportado: ${new Date().toLocaleString('pt-BR')}
  Fator de pico: ${normalized.peakFactor}
- Média (L/s): ${normalized.avg.toFixed(3)}
+ Média (m³/h): ${normalized.avg.toFixed(3)}
 
 [JUNCTIONS]
 ;ID              	Elev        	Demand      	Pattern
@@ -165,7 +165,7 @@ const exportModule = (() => {
 [PATTERNS]
 ;ID              	Multipliers
 ;Padrão de consumo horário gerado por HydroBalance AI
-;Média: ${normalized.avg.toFixed(3)} L/s | Fator Pico: ${normalized.peakFactor}
+;Média: ${normalized.avg.toFixed(3)} m³/h | Fator Pico: ${normalized.peakFactor}
  CONSUMO_PADRAO  \t${multipliers.slice(0, 6).map(v => v.toFixed(4)).join('\t')}
  CONSUMO_PADRAO  \t${multipliers.slice(6, 12).map(v => v.toFixed(4)).join('\t')}
  CONSUMO_PADRAO  \t${multipliers.slice(12, 18).map(v => v.toFixed(4)).join('\t')}
@@ -278,7 +278,7 @@ const exportModule = (() => {
       `# Média vazão (L/s): ${normalized.avg.toFixed(3)}`,
       `# Fator de pico: ${normalized.peakFactor}`,
       '',
-      'Hora;Hora_Decimal;Mult_Consumo;Mult_Perdas;Vazao_Total_Ls;Consumo_Ls;Perda_Real_Ls',
+      'Hora;Hora_Decimal;Mult_Consumo;Mult_Perdas;Vazao_Total_m3h;Consumo_Ls;Perda_Real_m3h',
       ...MOCK.hours.map((h, i) => [
         h,
         i.toFixed(1),
@@ -349,17 +349,17 @@ const exportModule = (() => {
   <div class="kpi">
     <div class="kpi-label">Consumo Efetivo</div>
     <div class="kpi-value">${kpis.consumption.toFixed(2)}</div>
-    <div class="kpi-unit">L/s</div>
+    <div class="kpi-unit">m³/h</div>
   </div>
   <div class="kpi">
     <div class="kpi-label">Perdas Reais</div>
     <div class="kpi-value">${kpis.realLoss.toFixed(2)}</div>
-    <div class="kpi-unit">L/s</div>
+    <div class="kpi-unit">m³/h</div>
   </div>
   <div class="kpi">
     <div class="kpi-label">Perdas Aparentes</div>
     <div class="kpi-value">${kpis.apparentLoss.toFixed(2)}</div>
-    <div class="kpi-unit">L/s</div>
+    <div class="kpi-unit">m³/h</div>
   </div>
   <div class="kpi">
     <div class="kpi-label">Índice de Perdas</div>
@@ -370,7 +370,7 @@ const exportModule = (() => {
 
 <h2>Balanço Hídrico IWA</h2>
 <table>
-  <thead><tr><th>Componente</th><th>Volume (m³/dia)</th><th>L/s médio</th><th>%</th></tr></thead>
+  <thead><tr><th>Componente</th><th>Volume (m³/dia)</th><th>m³/h médio</th><th>%</th></tr></thead>
   <tbody>
     <tr><td>Volume Distribuído (Entrada)</td><td>${kpis.volume24h.toFixed(0)}</td><td>${kpis.avgFlow.toFixed(2)}</td><td>100%</td></tr>
     <tr><td>Consumo Autorizado Faturado</td><td>${(kpis.consumption*86.4).toFixed(0)}</td><td>${kpis.consumption.toFixed(2)}</td><td>${(kpis.consumption/kpis.avgFlow*100).toFixed(1)}%</td></tr>
@@ -383,10 +383,10 @@ const exportModule = (() => {
 <table>
   <thead><tr><th>Parâmetro</th><th>Valor</th></tr></thead>
   <tbody>
-    <tr><td>VMN Detectada</td><td>${vmn.vmn.toFixed(2)} L/s</td></tr>
+    <tr><td>VMN Detectada</td><td>${vmn.vmn.toFixed(2)} m³/h</td></tr>
     <tr><td>Horário Crítico</td><td>${vmn.hourLabel}</td></tr>
-    <tr><td>Consumo Noturno Estimado</td><td>${vmn.nightConsumption} L/s</td></tr>
-    <tr><td>Perdas Reais Estimadas (VMN)</td><td>${vmn.realLossEstimate} L/s</td></tr>
+    <tr><td>Consumo Noturno Estimado</td><td>${vmn.nightConsumption} m³/h</td></tr>
+    <tr><td>Perdas Reais Estimadas (VMN)</td><td>${vmn.realLossEstimate} m³/h</td></tr>
   </tbody>
 </table>
 

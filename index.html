@@ -105,7 +105,7 @@
         <div class="panel-body" id="pConsumption-body">
           <div class="toolbar-row">
             <span id="totalConnectionsDisplay" class="info-txt">Lig. (Auto): <strong>0</strong></span>
-            <span id="microTotalDisplay" class="info-txt">Micro Total: <strong>0</strong> L/s</span>
+            <span id="microTotalDisplay" class="info-txt">Micro Total: <strong>0</strong> m³/h</span>
           </div>
           <div class="toolbar-row">
             <button class="btn-sm" onclick="document.getElementById('consumptionFile').click()">
@@ -184,7 +184,7 @@
           </div>
           <div class="params-summary">
             <div class="ps-row"><span>Ligações (Auto)</span><span id="totalConnections" class="ps-val">2432</span></div>
-            <div class="ps-row"><span>Micro Total (L/s)</span><span id="microTotal" class="ps-val">10.5087</span></div>
+            <div class="ps-row"><span>Micro Total (m³/h)</span><span id="microTotal" class="ps-val">10.5087</span></div>
           </div>
           <div class="field-row">
             <label>Reservatórios (% Vel.)</label>
@@ -222,7 +222,7 @@
             <select id="billingUnit" class="sel">
               <option>11/A litros não especificados</option>
               <option>m³/mês</option>
-              <option>L/s médio</option>
+              <option>m³/h médio</option>
             </select>
           </div>
           <div class="tab-grp">
@@ -239,17 +239,17 @@
         <div class="kpi-card kpi-blue">
           <div class="kpi-lbl">Consumo Efetivo</div>
           <div class="kpi-val" id="kpiConsumption">6,02</div>
-          <div class="kpi-unit">L/s — 1ª Linha</div>
+          <div class="kpi-unit">m³/h — 1ª Linha</div>
         </div>
         <div class="kpi-card kpi-orange">
           <div class="kpi-lbl">Perdas Reais</div>
           <div class="kpi-val" id="kpiRealLoss">3,99</div>
-          <div class="kpi-unit">L/s — 1ª Linha</div>
+          <div class="kpi-unit">m³/h — 1ª Linha</div>
         </div>
         <div class="kpi-card kpi-red">
           <div class="kpi-lbl">Perdas Aparentes</div>
           <div class="kpi-val" id="kpiApparentLoss">10,59</div>
-          <div class="kpi-unit">L/s — 1ª Linha</div>
+          <div class="kpi-unit">m³/h — 1ª Linha</div>
         </div>
         <div class="kpi-card kpi-purple">
           <div class="kpi-lbl">Índice de Perdas</div>
@@ -277,7 +277,7 @@
       <!-- Main Chart -->
       <div class="chart-card" id="mainChartCard">
         <div class="cc-header">
-          <div class="cc-title"><i data-lucide="activity"></i> Balanço Hídrico (L/s)</div>
+          <div class="cc-title"><i data-lucide="activity"></i> Balanço Hídrico (m³/h)</div>
           <div class="cc-controls">
             <button class="btn-icon-sm" onclick="charts.toggleZoom('main')" title="Zoom"><i data-lucide="zoom-in"></i></button>
             <button class="btn-icon-sm" onclick="charts.resetZoom('main')" title="Reset"><i data-lucide="maximize-2"></i></button>
@@ -321,7 +321,7 @@
           </div>
           <div class="reservoir-table-wrap">
             <table class="dtable-sm">
-              <thead><tr><th>Hora</th><th>Nível Final</th><th>Vazão Ent. (L/s)</th></tr></thead>
+              <thead><tr><th>Hora</th><th>Nível Final</th><th>Vazão Ent. (m³/h)</th></tr></thead>
               <tbody id="reservoirBody"></tbody>
             </table>
           </div>
@@ -352,10 +352,10 @@
             <canvas id="vmnChart"></canvas>
           </div>
           <div class="vmn-stats">
-            <div class="vmn-row"><span>VMN detectada</span><strong id="vmnDetected">4,2 L/s</strong></div>
+            <div class="vmn-row"><span>VMN detectada</span><strong id="vmnDetected">4,2 m³/h</strong></div>
             <div class="vmn-row"><span>Horário crítico</span><strong id="vmnTime">03:00h</strong></div>
-            <div class="vmn-row"><span>Cons. noturno est.</span><strong id="vmnNight">1,8 L/s</strong></div>
-            <div class="vmn-row warn-row"><span>Perdas reais est.</span><strong id="vmnRealLoss">2,4 L/s</strong></div>
+            <div class="vmn-row"><span>Cons. noturno est.</span><strong id="vmnNight">1,8 m³/h</strong></div>
+            <div class="vmn-row warn-row"><span>Perdas reais est.</span><strong id="vmnRealLoss">2,4 m³/h</strong></div>
           </div>
         </div>
       </div>

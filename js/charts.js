@@ -44,7 +44,7 @@ const charts = (() => {
           titleFont: { family: "'Courier New', monospace", size: 11, weight: 'bold' },
           bodyFont: { family: "'Courier New', monospace", size: 11 },
           callbacks: {
-            label: ctx => ` ${ctx.dataset.label}: ${ctx.parsed.y.toFixed(2)} L/s`
+            label: ctx => ` ${ctx.dataset.label}: ${ctx.parsed.y.toFixed(2)} m³/h`
           }
         },
         zoom: {
@@ -105,10 +105,10 @@ const charts = (() => {
 
     const opts = baseOptions('Balanço Hídrico');
     opts.plugins.tooltip.callbacks.label = ctx =>
-      ` ${ctx.dataset.label}: ${ctx.parsed.y.toFixed(2)} L/s`;
+      ` ${ctx.dataset.label}: ${ctx.parsed.y.toFixed(2)} m³/h`;
     opts.scales.y.title = {
       display: true,
-      text: 'Vazão (L/s)',
+      text: 'Vazão (m³/h)',
       color: DEFAULTS.color,
       font: { size: 10 }
     };
@@ -203,7 +203,7 @@ const charts = (() => {
     delete opts.plugins.zoom;
     opts.plugins.tooltip.callbacks.label = ctx => {
       if (ctx.dataset.label === 'Nível (%)') return ` Nível: ${ctx.parsed.y.toFixed(1)}%`;
-      return ` Vazão: ${ctx.parsed.y.toFixed(2)} L/s`;
+      return ` Vazão: ${ctx.parsed.y.toFixed(2)} m³/h`;
     };
 
     const levels = reservoirData.map(r => r.levelPct);
@@ -226,7 +226,7 @@ const charts = (() => {
             yAxisID: 'y'
           },
           {
-            label: 'Entrada (L/s)',
+            label: 'Entrada (m³/h)',
             data: inflows,
             borderColor: '#1e88e5',
             backgroundColor: 'transparent',
@@ -251,7 +251,7 @@ const charts = (() => {
           y2: {
             ...opts.scales.y,
             position: 'right',
-            title: { display: true, text: 'L/s', color: DEFAULTS.color, font: { size: 10 } },
+            title: { display: true, text: 'm³/h', color: DEFAULTS.color, font: { size: 10 } },
             grid: { drawOnChartArea: false }
           }
         }
@@ -295,7 +295,7 @@ const charts = (() => {
           titleColor: '#00e5ff',
           bodyColor: '#c8e8f0',
           callbacks: {
-            label: ctx => ` Vazão: ${ctx.parsed.y.toFixed(2)} L/s`
+            label: ctx => ` Vazão: ${ctx.parsed.y.toFixed(2)} m³/h`
           }
         }
       },
