@@ -234,7 +234,7 @@ const ui = (() => {
   function updateConsumptionStats() {
     const totalConnections = appState.consumptionData.reduce((s, r) => s + (r.connections || 0), 0);
     const microTotal = appState.consumptionData.reduce((s, r) =>
-      s + ((r.connections || 0) * (r.avgConsumption || 0) / 30 / 24), 0); // m³/mês → m³/h
+      s + ((r.connections || 0) * (r.avgConsumption || 0) / 24), 0); // m³/dia → m³/h
 
     const el1 = document.getElementById('totalConnectionsDisplay');
     const el2 = document.getElementById('microTotalDisplay');

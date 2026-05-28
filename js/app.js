@@ -38,7 +38,7 @@ const app = (() => {
 
     // ── Consumption from table ───────────────────────
     const tableConsumM3h = appState.consumptionData.reduce(
-      (s, r) => s + ((r.connections || 0) * (r.avgConsumption || 0) / 30 / 24), 0
+      (s, r) => s + ((r.connections || 0) * (r.avgConsumption || 0) / 24), 0
     );
     const consumptionM3h = tableConsumM3h > 0 ? tableConsumM3h : 41.70;
 
