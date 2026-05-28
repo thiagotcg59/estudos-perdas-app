@@ -788,7 +788,7 @@ html, body {
 
 .chart-wrap {
   padding: 10px;
-  height: 220px;
+  height: 280px;
 }
 .chart-wrap--sm { height: 150px; }
 .chart-wrap--xs { height: 120px; }

@@ -112,10 +112,9 @@ const charts = (() => {
       color: DEFAULTS.color,
       font: { size: 10 }
     };
-    opts.scales.y.min = 0;
-
-    // Add VMN annotation line
-    const vmnResult = hydraulicEngine.detectVMN(data.flowTotal);
+    // Let Chart.js auto-scale so all series (consumo + perdas) are visible
+    opts.scales.y.min = undefined;
+    opts.scales.y.suggestedMin = 0;
 
     instances.main = new Chart(ctx, {
       type: 'line',
