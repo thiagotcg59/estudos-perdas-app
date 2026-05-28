@@ -1,0 +1,442 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>HydroBalance AI — Calibração Hidráulica</title>
+  <link rel="stylesheet" href="css/main.css">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-zoom@2.0.1/dist/chartjs-plugin-zoom.min.js"></script>
+  <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.js"></script>
+</head>
+<body>
+
+  <!-- HEADER -->
+  <header class="app-header">
+    <div class="header-brand">
+      <div class="brand-icon"><i data-lucide="droplets"></i></div>
+      <div class="brand-text">
+        <h1>HydroBalance <span class="accent">AI</span></h1>
+        <small>Sistema de Calibração Hidráulica v2.1</small>
+      </div>
+    </div>
+    <div class="header-project">
+      <label class="project-label">PROJETO:</label>
+      <input type="text" id="projectName" value="Sistema Norte — Zona Alta" class="project-input">
+      <span class="meta-sep">|</span>
+      <span id="headerDate" class="meta-txt"></span>
+      <span class="meta-sep">|</span>
+      <span class="meta-txt">DMC: Norte-01</span>
+    </div>
+    <div class="header-actions">
+      <button class="btn-icon" title="Salvar" onclick="app.saveProject()"><i data-lucide="save"></i></button>
+      <button class="btn-icon" title="Carregar" onclick="app.loadProject()"><i data-lucide="folder-open"></i></button>
+      <button class="btn-icon" title="Exportar PDF" onclick="exportModule.exportPDF()"><i data-lucide="file-text"></i></button>
+      <button class="btn-primary" onclick="app.runAnalysis()">
+        <i data-lucide="play"></i> Executar Análise
+      </button>
+    </div>
+  </header>
+
+  <!-- STATUS BAR -->
+  <div class="status-bar">
+    <div class="status-item ok"><i data-lucide="check-circle"></i><span>Dados Validados</span></div>
+    <div class="status-item ok"><i data-lucide="database"></i><span id="statusConnections">2.432 Ligações</span></div>
+    <div class="status-item warn" id="statusLastCalc"><i data-lucide="clock"></i><span>Último cálculo: --</span></div>
+    <div class="status-item"><i data-lucide="activity"></i><span id="statusMode">Modo: Análise Completa</span></div>
+    <div class="status-right">
+      <span class="dot-online"></span><span>Motor Hidráulico Online</span>
+    </div>
+  </div>
+
+  <!-- MAIN LAYOUT -->
+  <div class="app-layout">
+
+    <!-- ══════════════ LEFT PANEL ══════════════ -->
+    <aside class="left-panel">
+
+      <!-- 1. Fontes de Vazão -->
+      <div class="panel" id="pSources">
+        <div class="panel-header" onclick="ui.togglePanel('pSources')">
+          <div class="panel-title"><i data-lucide="waves"></i><span>1. Fontes de Vazão</span></div>
+          <div class="panel-controls">
+            <span class="badge" id="sourceCount">0</span>
+            <i data-lucide="chevron-down" class="chevron"></i>
+          </div>
+        </div>
+        <div class="panel-body" id="pSources-body">
+          <div id="sourcesList"></div>
+          <button class="btn-add" onclick="ui.addSource()"><i data-lucide="plus"></i> Adicionar Fonte</button>
+          <div class="field-row mt8">
+            <label>Vazão Constante Adicional</label>
+            <div class="input-unit">
+              <input type="number" id="additionalFlow" value="17.5" step="0.5" class="f-input">
+              <span class="unit">m³/h</span>
+            </div>
+          </div>
+          <div class="field-hint">*Calculada sobre todos os horários do dia</div>
+        </div>
+      </div>
+
+      <!-- 2. Pressões -->
+      <div class="panel" id="pPressures">
+        <div class="panel-header" onclick="ui.togglePanel('pPressures')">
+          <div class="panel-title"><i data-lucide="gauge"></i><span>2. Pressões Medidas</span></div>
+          <div class="panel-controls">
+            <span class="badge" id="pressureCount">0</span>
+            <i data-lucide="chevron-down" class="chevron"></i>
+          </div>
+        </div>
+        <div class="panel-body" id="pPressures-body">
+          <div id="pressuresList"></div>
+          <button class="btn-add" onclick="ui.addPressurePoint()"><i data-lucide="plus"></i> Adicionar Ponto</button>
+        </div>
+      </div>
+
+      <!-- 3. Cadastro de Consumo -->
+      <div class="panel" id="pConsumption">
+        <div class="panel-header" onclick="ui.togglePanel('pConsumption')">
+          <div class="panel-title"><i data-lucide="users"></i><span>3. Cadastro (Consumo)</span></div>
+          <div class="panel-controls">
+            <span class="badge" id="consumptionCount">0</span>
+            <i data-lucide="chevron-down" class="chevron"></i>
+          </div>
+        </div>
+        <div class="panel-body" id="pConsumption-body">
+          <div class="toolbar-row">
+            <span id="totalConnectionsDisplay" class="info-txt">Lig. (Auto): <strong>0</strong></span>
+            <span id="microTotalDisplay" class="info-txt">Micro Total: <strong>0</strong> L/s</span>
+          </div>
+          <div class="toolbar-row">
+            <button class="btn-sm" onclick="document.getElementById('consumptionFile').click()">
+              <i data-lucide="upload"></i> Importar CSV
+            </button>
+            <input type="file" id="consumptionFile" accept=".csv" style="display:none" onchange="parser.parseConsumptionCSV(this)">
+          </div>
+          <div class="table-wrapper">
+            <table class="dtable" id="consumptionTable">
+              <thead>
+                <tr>
+                  <th>Categoria</th>
+                  <th>Lig.</th>
+                  <th>Cons. (m³/m)</th>
+                  <th></th>
+                </tr>
+              </thead>
+              <tbody id="consumptionBody"></tbody>
+            </table>
+          </div>
+          <button class="btn-add" onclick="ui.addConsumptionRow()"><i data-lucide="plus"></i> Nova Categoria</button>
+          <div class="field-row mt8">
+            <label>% Hax Per (1)</label>
+            <input type="number" id="paramHaxPer" value="0.05" step="0.01" class="f-input">
+          </div>
+        </div>
+      </div>
+
+      <!-- 4. Parâmetros -->
+      <div class="panel" id="pParams">
+        <div class="panel-header" onclick="ui.togglePanel('pParams')">
+          <div class="panel-title"><i data-lucide="settings-2"></i><span>4. Parâmetros FAVAD</span></div>
+          <div class="panel-controls"><i data-lucide="chevron-down" class="chevron"></i></div>
+        </div>
+        <div class="panel-body" id="pParams-body">
+          <div class="presets-row">
+            <span class="preset-lbl">Presets:</span>
+            <button class="btn-preset active" id="preset-residential" onclick="ui.applyPreset('residential')">Residencial</button>
+            <button class="btn-preset" id="preset-industrial" onclick="ui.applyPreset('industrial')">Industrial</button>
+            <button class="btn-preset" id="preset-mixed" onclick="ui.applyPreset('mixed')">Misto</button>
+            <button class="btn-preset" id="preset-dmc" onclick="ui.applyPreset('dmc')">DMC Noturno</button>
+          </div>
+          <div class="params-grid">
+            <div class="param-item">
+              <label>% Hax Per (1)</label>
+              <input type="number" id="p_haxPer1" value="4" step="0.5" class="f-input">
+            </div>
+            <div class="param-item">
+              <label>% Hax Per (2)</label>
+              <input type="number" id="p_haxPer2" value="10" step="0.5" class="f-input">
+            </div>
+            <div class="param-item">
+              <label>Fator E1</label>
+              <input type="number" id="p_E1" value="1.0" step="0.05" class="f-input">
+            </div>
+            <div class="param-item">
+              <label>Di Bloco</label>
+              <input type="number" id="p_diBloco" value="0.5" step="0.05" class="f-input">
+            </div>
+            <div class="param-item">
+              <label>P Estad (1)</label>
+              <input type="number" id="p_pEstad1" value="50" step="1" class="f-input">
+            </div>
+            <div class="param-item">
+              <label>Di Zona</label>
+              <input type="number" id="p_diZona" value="1.14" step="0.01" class="f-input">
+            </div>
+            <div class="param-item">
+              <label>Auto Pri</label>
+              <input type="number" id="p_autoPri" value="1.50" step="0.05" class="f-input">
+            </div>
+            <div class="param-item">
+              <label>Dias</label>
+              <input type="number" id="p_dias" value="30" step="1" class="f-input">
+            </div>
+          </div>
+          <div class="params-summary">
+            <div class="ps-row"><span>Ligações (Auto)</span><span id="totalConnections" class="ps-val">2432</span></div>
+            <div class="ps-row"><span>Micro Total (L/s)</span><span id="microTotal" class="ps-val">10.5087</span></div>
+          </div>
+          <div class="field-row">
+            <label>Reservatórios (% Vel.)</label>
+            <input type="number" id="p_reservoir" value="0" step="1" class="f-input f-input--sm">
+            <label class="ml8">Work Day</label>
+            <button class="btn-sm" onclick="document.getElementById('workdayFile').click()"><i data-lucide="folder"></i> Escolher arquivo</button>
+            <input type="file" id="workdayFile" style="display:none">
+          </div>
+          <button class="btn-calculate" onclick="app.calculateBalance()">
+            <i data-lucide="calculator"></i> Calcular Balanço
+          </button>
+        </div>
+      </div>
+
+    </aside>
+
+    <!-- ══════════════ CENTER PANEL ══════════════ -->
+    <main class="center-panel">
+
+      <!-- Scenario Header -->
+      <div class="analysis-header">
+        <div class="ah-row">
+          <div class="ah-icon"><i data-lucide="settings"></i></div>
+          <div class="select-group">
+            <label>Cenário de Análise</label>
+            <select id="scenarioSelect" class="sel">
+              <option>Perfil Diário Único (Bimanual)</option>
+              <option>Análise por Setor</option>
+              <option>Calibração Automática</option>
+              <option>Análise de Sensibilidade</option>
+            </select>
+          </div>
+          <div class="select-group">
+            <label>Unidade de Cobrança (básic)</label>
+            <select id="billingUnit" class="sel">
+              <option>11/A litros não especificados</option>
+              <option>m³/mês</option>
+              <option>L/s médio</option>
+            </select>
+          </div>
+          <div class="tab-grp">
+            <button class="tab-btn active" data-tab="d1">D+1</button>
+            <button class="tab-btn" data-tab="d7">D+7</button>
+            <button class="tab-btn" data-tab="m1">M+1</button>
+            <button class="tab-btn" data-tab="m12">AN.</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- KPI Cards -->
+      <div class="kpi-grid">
+        <div class="kpi-card kpi-blue">
+          <div class="kpi-lbl">Consumo Efetivo</div>
+          <div class="kpi-val" id="kpiConsumption">6,02</div>
+          <div class="kpi-unit">L/s — 1ª Linha</div>
+        </div>
+        <div class="kpi-card kpi-orange">
+          <div class="kpi-lbl">Perdas Reais</div>
+          <div class="kpi-val" id="kpiRealLoss">3,99</div>
+          <div class="kpi-unit">L/s — 1ª Linha</div>
+        </div>
+        <div class="kpi-card kpi-red">
+          <div class="kpi-lbl">Perdas Aparentes</div>
+          <div class="kpi-val" id="kpiApparentLoss">10,59</div>
+          <div class="kpi-unit">L/s — 1ª Linha</div>
+        </div>
+        <div class="kpi-card kpi-purple">
+          <div class="kpi-lbl">Índice de Perdas</div>
+          <div class="kpi-val" id="kpiLossIndex">51,1</div>
+          <div class="kpi-unit">%</div>
+        </div>
+      </div>
+
+      <!-- Volume Summary -->
+      <div class="summary-card">
+        <div class="sc-header">
+          <div class="sc-title"><i data-lucide="pie-chart"></i> Resumo de Volume</div>
+          <button class="btn-sm" onclick="exportModule.exportCSV('summary')"><i data-lucide="download"></i> Exportar</button>
+        </div>
+        <table class="stbl">
+          <thead><tr><th>Componente</th><th>Volume Total (m³/dia)</th><th>%</th></tr></thead>
+          <tbody>
+            <tr class="tr-real"><td><span class="dot-c dot-real"></span>Perda Real</td><td id="volReal">693 m³</td><td id="pctReal">68,8%</td></tr>
+            <tr class="tr-apparent"><td><span class="dot-c dot-apparent"></span>Perda Apar.</td><td id="volApparent">494 m³</td><td id="pctApparent">85,2%</td></tr>
+            <tr class="tr-total"><td><span class="dot-c dot-total"></span>Total Perdas</td><td id="volTotal">1057 m³</td><td id="pctTotal">100%</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <!-- Main Chart -->
+      <div class="chart-card" id="mainChartCard">
+        <div class="cc-header">
+          <div class="cc-title"><i data-lucide="activity"></i> Balanço Hídrico (L/s)</div>
+          <div class="cc-controls">
+            <button class="btn-icon-sm" onclick="charts.toggleZoom('main')" title="Zoom"><i data-lucide="zoom-in"></i></button>
+            <button class="btn-icon-sm" onclick="charts.resetZoom('main')" title="Reset"><i data-lucide="maximize-2"></i></button>
+            <button class="btn-icon-sm" onclick="charts.downloadChart('main')" title="Download"><i data-lucide="download"></i></button>
+          </div>
+        </div>
+        <div class="chart-wrap">
+          <canvas id="mainChart"></canvas>
+        </div>
+      </div>
+
+      <!-- Pressure Chart -->
+      <div class="chart-card">
+        <div class="cc-header">
+          <div class="cc-title"><i data-lucide="gauge"></i> Perfil de Pressão (Média Horária)</div>
+          <div class="cc-controls">
+            <button class="btn-icon-sm" onclick="charts.resetZoom('pressure')"><i data-lucide="maximize-2"></i></button>
+          </div>
+        </div>
+        <div class="chart-wrap chart-wrap--sm">
+          <canvas id="pressureChart"></canvas>
+        </div>
+      </div>
+
+      <!-- Reservoir Detail -->
+      <div class="chart-card">
+        <div class="cc-header">
+          <div class="cc-title">
+            <i data-lucide="database"></i> Detalhe Reservatório
+            <span class="info-i" title="Balanço de volume no reservatório">i</span>
+          </div>
+          <select class="sel-sm" id="reservoirSelect">
+            <option value="">-- Selecionar --</option>
+            <option>Reservatório Norte-01</option>
+            <option>Reservatório Norte-02</option>
+          </select>
+        </div>
+        <div class="reservoir-layout">
+          <div class="chart-wrap chart-wrap--sm">
+            <canvas id="reservoirChart"></canvas>
+          </div>
+          <div class="reservoir-table-wrap">
+            <table class="dtable-sm">
+              <thead><tr><th>Hora</th><th>Nível Final</th><th>Vazão Ent. (L/s)</th></tr></thead>
+              <tbody id="reservoirBody"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+    </main>
+
+    <!-- ══════════════ RIGHT PANEL ══════════════ -->
+    <aside class="right-panel">
+
+      <!-- AI Insights -->
+      <div class="panel panel--ai">
+        <div class="panel-header">
+          <div class="panel-title"><i data-lucide="brain-circuit"></i><span>AI — Insights</span></div>
+          <button class="btn-icon-sm" onclick="app.refreshInsights()" title="Atualizar"><i data-lucide="refresh-cw"></i></button>
+        </div>
+        <div class="panel-body" id="insightsList"></div>
+      </div>
+
+      <!-- VMN Curve -->
+      <div class="panel">
+        <div class="panel-header">
+          <div class="panel-title"><i data-lucide="trending-down"></i><span>Curva VMN</span></div>
+        </div>
+        <div class="panel-body">
+          <div class="chart-wrap chart-wrap--xs">
+            <canvas id="vmnChart"></canvas>
+          </div>
+          <div class="vmn-stats">
+            <div class="vmn-row"><span>VMN detectada</span><strong id="vmnDetected">4,2 L/s</strong></div>
+            <div class="vmn-row"><span>Horário crítico</span><strong id="vmnTime">03:00h</strong></div>
+            <div class="vmn-row"><span>Cons. noturno est.</span><strong id="vmnNight">1,8 L/s</strong></div>
+            <div class="vmn-row warn-row"><span>Perdas reais est.</span><strong id="vmnRealLoss">2,4 L/s</strong></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- GIS Map Placeholder -->
+      <div class="panel">
+        <div class="panel-header">
+          <div class="panel-title"><i data-lucide="map"></i><span>Mapa — GIS</span></div>
+          <span class="badge-future">Em breve</span>
+        </div>
+        <div class="panel-body">
+          <div class="map-placeholder">
+            <div class="map-grid-bg"></div>
+            <div class="map-overlay-txt">
+              <i data-lucide="map-pin"></i>
+              <p>Integração GIS / QGIS</p>
+              <small>Versão futura</small>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Export -->
+      <div class="panel">
+        <div class="panel-header">
+          <div class="panel-title"><i data-lucide="share-2"></i><span>Exportar</span></div>
+        </div>
+        <div class="panel-body">
+          <div class="export-grid">
+            <button class="exp-btn" onclick="exportModule.exportCSV('all')">
+              <i data-lucide="file-spreadsheet"></i><span>CSV</span>
+            </button>
+            <button class="exp-btn" onclick="exportModule.exportJSON()">
+              <i data-lucide="code-2"></i><span>JSON</span>
+            </button>
+            <button class="exp-btn" onclick="exportModule.exportINP()">
+              <i data-lucide="box"></i><span>EPANET INP</span>
+            </button>
+            <button class="exp-btn" onclick="exportModule.exportPatterns()">
+              <i data-lucide="bar-chart-2"></i><span>Patterns</span>
+            </button>
+          </div>
+          <button class="btn-calculate mt8" onclick="exportModule.exportPDF()">
+            <i data-lucide="file-text"></i> Gerar Relatório PDF
+          </button>
+        </div>
+      </div>
+
+    </aside>
+
+  </div><!-- /app-layout -->
+
+  <!-- Loading Overlay -->
+  <div class="loading-overlay" id="loadingOverlay" style="display:none">
+    <div class="loading-box">
+      <div class="spinner"></div>
+      <p id="loadingText">Executando análise hidráulica...</p>
+      <div class="progress-bar"><div class="progress-fill" id="progressFill"></div></div>
+    </div>
+  </div>
+
+  <!-- Toast Container -->
+  <div id="toastContainer" class="toast-container"></div>
+
+  <!-- Modal -->
+  <div class="modal-overlay" id="modalOverlay" style="display:none" onclick="ui.closeModal(event)">
+    <div class="modal" id="modal">
+      <div class="modal-header">
+        <span id="modalTitle">—</span>
+        <button class="modal-close" onclick="ui.closeModal()"><i data-lucide="x"></i></button>
+      </div>
+      <div class="modal-body" id="modalBody"></div>
+    </div>
+  </div>
+
+  <script src="js/mockData.js"></script>
+  <script src="js/hydraulicEngine.js"></script>
+  <script src="js/parser.js"></script>
+  <script src="js/charts.js"></script>
+  <script src="js/ui.js"></script>
+  <script src="js/export.js"></script>
+  <script src="js/app.js"></script>
+</body>
+</html>
