@@ -364,6 +364,42 @@ const charts = (() => {
     inst.update('none');
   }
 
+  function expandChart(cardId, chartKey) {
+    const card = document.getElementById(cardId);
+    if (!card) return;
+
+    const isNowFullscreen = card.classList.toggle('fullscreen');
+
+    // Swap icon between maximize-2 and minimize-2
+    const btn = card.querySelector('.cc-controls .btn-icon-sm[data-expand]');
+    if (btn) {
+      btn.innerHTML = isNowFullscreen
+        ? '<i data-lucide="minimize-2"></i>'
+        : '<i data-lucide="maximize-2"></i>';
+      if (typeof lucide !== 'undefined') lucide.createIcons();
+    }
+
+    // Let CSS transition finish then resize chart
+    setTimeout(() => {
+      if (instances[chartKey]) instances[chartKey].resize();
+    }, 60);
+
+    // Close on Escape key
+    if (isNowFullscreen) {
+      const onEsc = e => {
+        if (e.key !== 'Escape') return;
+        card.classList.remove('fullscreen');
+        if (btn) {
+          btn.innerHTML = '<i data-lucide="maximize-2"></i>';
+          if (typeof lucide !== 'undefined') lucide.createIcons();
+        }
+        setTimeout(() => { if (instances[chartKey]) instances[chartKey].resize(); }, 60);
+        document.removeEventListener('keydown', onEsc);
+      };
+      document.addEventListener('keydown', onEsc);
+    }
+  }
+
   function downloadChart(chartKey) {
     const inst = instances[chartKey];
     if (!inst) return;
@@ -388,6 +424,7 @@ const charts = (() => {
     updateReservoirChart,
     resetZoom,
     toggleZoom,
+    expandChart,
     downloadChart,
     instances
   };

@@ -761,6 +761,21 @@ html, body {
   overflow: hidden;
 }
 
+/* Fullscreen expanded state */
+.chart-card.fullscreen {
+  position: fixed;
+  inset: 84px 0 0 0;   /* below header (56px) + status bar (28px) */
+  z-index: 2000;
+  border-radius: 0;
+  border: none;
+  border-top: 2px solid var(--border-hi);
+  overflow: auto;
+}
+.chart-card.fullscreen .chart-wrap {
+  height: calc(100vh - 84px - 52px);  /* minus cc-header */
+  padding: 16px 20px 24px;
+}
+
 .cc-header {
   display: flex; align-items: center; justify-content: space-between;
   padding: 8px 12px;

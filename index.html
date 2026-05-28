@@ -279,9 +279,10 @@
         <div class="cc-header">
           <div class="cc-title"><i data-lucide="activity"></i> Balanço Hídrico (m³/h)</div>
           <div class="cc-controls">
-            <button class="btn-icon-sm" onclick="charts.toggleZoom('main')" title="Zoom"><i data-lucide="zoom-in"></i></button>
-            <button class="btn-icon-sm" onclick="charts.resetZoom('main')" title="Reset"><i data-lucide="maximize-2"></i></button>
-            <button class="btn-icon-sm" onclick="charts.downloadChart('main')" title="Download"><i data-lucide="download"></i></button>
+            <button class="btn-icon-sm" onclick="charts.toggleZoom('main')" title="Zoom scroll"><i data-lucide="zoom-in"></i></button>
+            <button class="btn-icon-sm" onclick="charts.resetZoom('main')" title="Reset zoom"><i data-lucide="rotate-ccw"></i></button>
+            <button class="btn-icon-sm" data-expand onclick="charts.expandChart('mainChartCard','main')" title="Expandir / Fechar (Esc)"><i data-lucide="maximize-2"></i></button>
+            <button class="btn-icon-sm" onclick="charts.downloadChart('main')" title="Download PNG"><i data-lucide="download"></i></button>
           </div>
         </div>
         <div class="chart-wrap">
