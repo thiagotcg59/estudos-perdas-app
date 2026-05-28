@@ -491,6 +491,194 @@ const ui = (() => {
     });
   }
 
+  // ══════════════════════════════════════════════════════
+  // PATTERN EDITOR
+  // ══════════════════════════════════════════════════════
+  let _patternChart = null;
+
+  function openPatternEditor() {
+    const current = appState.consumptionPattern || MOCK.consumptionPatterns.residential;
+    const hours = MOCK.hours;
+
+    const gridHTML = hours.map((h, i) => `
+      <div class="pe-cell">
+        <label class="pe-label">${h}</label>
+        <input type="number" id="pe_h${i}" class="pe-input f-input"
+          value="${current[i].toFixed(3)}" step="0.01" min="0" max="9.99"
+          oninput="ui.updatePatternPreview()">
+      </div>`).join('');
+
+    const body = `
+      <div class="pe-wrap">
+        <div class="pe-top">
+          <div class="pe-presets-row">
+            <span class="preset-lbl">Preset:</span>
+            <button class="btn-preset" onclick="ui.applyPatternPreset('residential')">Residencial BR</button>
+            <button class="btn-preset" onclick="ui.applyPatternPreset('commercial')">Comercial</button>
+            <button class="btn-preset" onclick="ui.applyPatternPreset('industrial')">Industrial</button>
+            <button class="btn-preset" onclick="ui.applyPatternPreset('mixed')">Misto</button>
+          </div>
+          <div class="pe-chart-wrap">
+            <canvas id="patternPreviewCanvas" height="110"></canvas>
+          </div>
+          <div class="pe-stats-row" id="peStats">
+            <span>Pico: <strong id="pePeak">—</strong></span>
+            <span>Mínimo: <strong id="peMin">—</strong></span>
+            <span>Média: <strong id="peAvg">—</strong></span>
+            <span>Fator de pico: <strong id="pePeakFactor">—</strong></span>
+          </div>
+        </div>
+        <div class="pe-grid">${gridHTML}</div>
+        <div class="pe-actions-row">
+          <button class="btn-sm" onclick="document.getElementById('patternFileMod').click()">
+            <i data-lucide="upload"></i> Importar CSV
+          </button>
+          <input type="file" id="patternFileMod" accept=".csv" style="display:none"
+            onchange="parser.parsePatternCSV(this);ui.closeModal()">
+          <div style="flex:1"></div>
+          <button class="btn-sm" onclick="ui.closeModal()">Cancelar</button>
+          <button class="btn-calculate" style="width:auto;padding:6px 20px;margin:0"
+            onclick="ui.applyPattern()">
+            <i data-lucide="check"></i> Aplicar Padrão
+          </button>
+        </div>
+      </div>`;
+
+    openModal('Padrão de Consumo Horário (24h)', body);
+    if (typeof lucide !== 'undefined') lucide.createIcons();
+
+    // Render preview chart after modal is in DOM
+    setTimeout(() => {
+      _initPatternChart(current);
+      updatePatternStats(current);
+    }, 80);
+  }
+
+  function _initPatternChart(values) {
+    const ctx = document.getElementById('patternPreviewCanvas');
+    if (!ctx) return;
+    if (_patternChart) { _patternChart.destroy(); _patternChart = null; }
+
+    const avg = values.reduce((a,b)=>a+b,0) / values.length;
+    const avgLine = Array(24).fill(+avg.toFixed(3));
+
+    _patternChart = new Chart(ctx, {
+      type: 'bar',
+      data: {
+        labels: MOCK.hours.map(h => h.slice(0,5)),
+        datasets: [
+          {
+            label: 'Multiplicador',
+            data: values,
+            backgroundColor: values.map(v =>
+              v >= 1.3 ? 'rgba(239,83,80,0.7)' :
+              v >= 1.0 ? 'rgba(0,188,212,0.6)' :
+                         'rgba(38,166,154,0.5)'),
+            borderColor: 'transparent',
+            borderRadius: 3
+          },
+          {
+            label: 'Média (1.0)',
+            data: avgLine,
+            type: 'line',
+            borderColor: '#ffa726',
+            borderDash: [4,3],
+            borderWidth: 1.5,
+            pointRadius: 0,
+            tension: 0
+          }
+        ]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+          legend: { display: false },
+          tooltip: {
+            backgroundColor: 'rgba(7,20,32,.95)',
+            borderColor: '#00b8d4',
+            borderWidth: 1,
+            callbacks: { label: ctx => ` ${ctx.parsed.y.toFixed(3)}×` }
+          }
+        },
+        scales: {
+          x: { grid: { color: 'rgba(0,184,212,0.06)' }, ticks: { color: '#6a9bac', font: { size: 9 } } },
+          y: { grid: { color: 'rgba(0,184,212,0.06)' }, ticks: { color: '#6a9bac', font: { size: 9 } }, min: 0 }
+        }
+      }
+    });
+  }
+
+  function updatePatternPreview() {
+    const values = _readPatternInputs();
+    if (!values) return;
+    if (_patternChart) {
+      const avg = values.reduce((a,b)=>a+b,0) / values.length;
+      _patternChart.data.datasets[0].data = values;
+      _patternChart.data.datasets[0].backgroundColor = values.map(v =>
+        v >= 1.3 ? 'rgba(239,83,80,0.7)' :
+        v >= 1.0 ? 'rgba(0,188,212,0.6)' :
+                   'rgba(38,166,154,0.5)');
+      _patternChart.data.datasets[1].data = Array(24).fill(+avg.toFixed(3));
+      _patternChart.update('none');
+    }
+    updatePatternStats(values);
+  }
+
+  function updatePatternStats(values) {
+    if (!values || values.length < 24) return;
+    const avg  = values.reduce((a,b)=>a+b,0) / values.length;
+    const peak = Math.max(...values);
+    const min  = Math.min(...values);
+    setEl('pePeak',       peak.toFixed(3) + '×');
+    setEl('peMin',        min.toFixed(3) + '×');
+    setEl('peAvg',        avg.toFixed(3) + '×');
+    setEl('pePeakFactor', (peak / avg).toFixed(2));
+  }
+
+  function applyPatternPreset(name) {
+    const preset = MOCK.consumptionPatterns[name];
+    if (!preset) return;
+    preset.forEach((v, i) => {
+      const el = document.getElementById(`pe_h${i}`);
+      if (el) el.value = v.toFixed(3);
+    });
+    updatePatternPreview();
+    toast(`Preset "${name}" carregado. Clique em Aplicar para confirmar.`, 'info', 2500);
+  }
+
+  function applyPattern() {
+    const values = _readPatternInputs();
+    if (!values) { toast('Valores inválidos no padrão.', 'error'); return; }
+
+    appState.consumptionPattern = values;
+
+    // Update badge
+    const badge = document.getElementById('patternLabel');
+    if (badge) badge.textContent = 'Personalizado';
+
+    closeModal();
+    app.liveUpdate();
+    toast('Padrão de consumo aplicado ao gráfico.', 'success');
+  }
+
+  function _readPatternInputs() {
+    const values = [];
+    for (let i = 0; i < 24; i++) {
+      const el = document.getElementById(`pe_h${i}`);
+      if (!el) return null;
+      const v = parseFloat(el.value);
+      if (isNaN(v) || v < 0) return null;
+      values.push(v);
+    }
+    return values;
+  }
+
+  function importPatternCSV(inputEl) {
+    parser.parsePatternCSV(inputEl);
+    closeModal();
+  }
+
   // ── Helpers ────────────────────────────────────────────
   function setEl(id, value) {
     const el = document.getElementById(id);
@@ -553,6 +741,11 @@ const ui = (() => {
     openModal,
     closeModal,
     setEl,
-    updateBadge
+    updateBadge,
+    openPatternEditor,
+    applyPatternPreset,
+    applyPattern,
+    updatePatternPreview,
+    importPatternCSV
   };
 })();

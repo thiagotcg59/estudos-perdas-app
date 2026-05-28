@@ -228,11 +228,56 @@ const parser = (() => {
     }
   }
 
+  // ── Pattern CSV (24 multipliers) ─────────────────────
+  function parsePatternCSV(inputEl) {
+    const file = inputEl.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = e => {
+      try {
+        const parsed = parseCSV(e.target.result);
+        if (!parsed) { ui.toast('CSV inválido.', 'error'); return; }
+
+        const { rows } = parsed;
+        // Accept: single column of 24 values, or columns hora+mult
+        let values = [];
+        if (rows.length >= 24) {
+          // Try to find multiplier column
+          const keys = Object.keys(rows[0]);
+          const multKey = keys.find(k =>
+            k.includes('mult') || k.includes('fator') || k.includes('coef') || k.includes('valor')
+          ) || keys[keys.length - 1]; // fallback: last column
+          values = rows.slice(0, 24).map(r => parseFloat(r[multKey]) || 1);
+        } else {
+          ui.toast(`CSV deve ter 24 linhas (encontrado: ${rows.length}).`, 'error');
+          return;
+        }
+
+        // Validate
+        const valid = values.every(v => v > 0 && v < 10);
+        if (!valid) { ui.toast('Valores inválidos. Multiplicadores devem estar entre 0 e 10.', 'error'); return; }
+
+        appState.consumptionPattern = values;
+        const label = file.name.replace(/\.[^.]+$/, '');
+        const badge = document.getElementById('patternLabel');
+        if (badge) badge.textContent = label;
+
+        app.liveUpdate();
+        ui.toast(`Padrão "${label}" importado (24h).`, 'success');
+      } catch (err) {
+        ui.toast('Erro ao processar padrão: ' + err.message, 'error');
+      }
+    };
+    reader.readAsText(file, 'UTF-8');
+    inputEl.value = '';
+  }
+
   return {
     parseCSV,
     parseConsumptionCSV,
     parseFlowCSV,
     parsePressureCSV,
+    parsePatternCSV,
     aggregateToHourly,
     validateSeries,
     handleSourceFile,

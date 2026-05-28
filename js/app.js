@@ -10,7 +10,8 @@ const appState = {
   lastAnalysis: null,
   currentData: null,
   activeTab: 'd1',
-  projectDirty: false
+  projectDirty: false,
+  consumptionPattern: null   // null = usa MOCK.consumptionPatterns.residential
 };
 
 const app = (() => {
@@ -138,7 +139,9 @@ const app = (() => {
       (s, r) => s + ((r.connections || 0) * (r.avgConsumption || 0) / 24), 0
     );
     const consumptionM3h = tableConsumM3h > 0 ? tableConsumM3h : mathAvg(MOCK.flowConsumption);
-    const flowConsumption = scaleArr(MOCK.flowConsumption, consumptionM3h);
+    // Use custom pattern if set, otherwise use default residential MOCK shape
+    const patternBase = appState.consumptionPattern || MOCK.consumptionPatterns.residential;
+    const flowConsumption = scaleArr(patternBase, consumptionM3h);
 
     // ── 3. Perdas = Medido − Consumo ─────────────────
     const totalAvg   = mathAvg(flowTotal);

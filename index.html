@@ -113,6 +113,16 @@
             </button>
             <input type="file" id="consumptionFile" accept=".csv" style="display:none" onchange="parser.parseConsumptionCSV(this)">
           </div>
+          <div class="toolbar-row">
+            <button class="btn-sm btn-pattern" onclick="ui.openPatternEditor()" title="Editar o padrão horário de consumo (multiplicadores 24h)">
+              <i data-lucide="sliders-horizontal"></i> Padrão Horário
+            </button>
+            <button class="btn-sm" onclick="document.getElementById('patternFile').click()" title="Importar padrão via CSV (24 linhas: hora, multiplicador)">
+              <i data-lucide="file-up"></i> CSV Padrão
+            </button>
+            <input type="file" id="patternFile" accept=".csv" style="display:none" onchange="parser.parsePatternCSV(this)">
+            <span id="patternLabel" class="pattern-badge">Residencial BR</span>
+          </div>
           <div class="table-wrapper">
             <table class="dtable" id="consumptionTable">
               <thead>

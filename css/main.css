@@ -1007,6 +1007,81 @@ canvas { display: block; width: 100% !important; height: 100% !important; }
 @keyframes fadeSlideIn { from { opacity: 0; transform: translateY(-4px); } to { opacity: 1; transform: translateY(0); } }
 
 /* ══════════════════════════════════════════════════════
+   PATTERN EDITOR
+══════════════════════════════════════════════════════ */
+.btn-pattern { border-color: var(--accent2) !important; color: var(--accent2) !important; }
+.btn-pattern:hover { background: #003d4a !important; }
+
+.pattern-badge {
+  font-size: 10px;
+  padding: 2px 7px;
+  background: #003d4a;
+  border: 1px solid var(--accent2);
+  border-radius: 10px;
+  color: var(--accent2);
+  white-space: nowrap;
+}
+
+.pe-wrap { display: flex; flex-direction: column; gap: 14px; }
+
+.pe-top { display: flex; flex-direction: column; gap: 8px; }
+
+.pe-presets-row {
+  display: flex; align-items: center; flex-wrap: wrap; gap: 5px;
+}
+
+.pe-chart-wrap {
+  height: 120px;
+  background: #070f1a;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 6px;
+}
+
+.pe-stats-row {
+  display: flex; gap: 16px; flex-wrap: wrap;
+  font-size: 11px; color: var(--text-dim);
+}
+.pe-stats-row strong { color: var(--accent); font-family: var(--font-mono); }
+
+.pe-grid {
+  display: grid;
+  grid-template-columns: repeat(6, 1fr);
+  gap: 5px;
+}
+
+.pe-cell {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  align-items: center;
+}
+
+.pe-label {
+  font-size: 10px;
+  color: var(--text-dim);
+  text-align: center;
+  white-space: nowrap;
+}
+
+.pe-input {
+  width: 100% !important;
+  text-align: center;
+  font-size: 12px !important;
+  padding: 4px 2px !important;
+  font-family: var(--font-mono) !important;
+}
+.pe-input:focus { border-color: var(--accent) !important; }
+
+.pe-actions-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding-top: 6px;
+  border-top: 1px solid var(--border);
+}
+
+/* ══════════════════════════════════════════════════════
    MODAL
 ══════════════════════════════════════════════════════ */
 .modal-overlay {
@@ -1020,9 +1095,9 @@ canvas { display: block; width: 100% !important; height: 100% !important; }
   background: var(--bg-panel);
   border: 1px solid var(--border-hi);
   border-radius: var(--radius-lg);
-  width: 540px;
-  max-width: 95vw;
-  max-height: 85vh;
+  width: 700px;
+  max-width: 97vw;
+  max-height: 90vh;
   overflow: hidden;
   display: flex; flex-direction: column;
   box-shadow: 0 0 60px rgba(0, 180, 220, .15);
