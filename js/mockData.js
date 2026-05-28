@@ -96,10 +96,11 @@ const MOCK = {
     66.24, 66.24, 66.24, 66.24, 66.24, 66.24
   ],
 
-  // Consumption categories (default)
+  // Consumption categories — avgConsumption in m³/dia per connection
+  // (typical Brazilian residential: ~8 m³/mês ÷ 30 = 0.267 m³/dia)
   consumptionCategories: [
-    { id: 1, category: 'RESIDENCIAL', connections: 2068, avgConsumption: 8.004359, weight: 1.0 },
-    { id: 2, category: 'RESIDENCIAL', connections: 364,  avgConsumption: 8.004421, weight: 1.0 }
+    { id: 1, category: 'RESIDENCIAL', connections: 2068, avgConsumption: 0.267, weight: 1.0 },
+    { id: 2, category: 'COMERCIAL',   connections: 364,  avgConsumption: 0.600, weight: 1.0 }
   ],
 
   // Pressure monitoring points
