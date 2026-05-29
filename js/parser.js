@@ -217,10 +217,18 @@ const parser = (() => {
   function parseProjectJSON(text) {
     try {
       const data = JSON.parse(text);
-      const required = ['projectName', 'consumptionData', 'sources', 'parameters'];
-      const missing = required.filter(k => !(k in data));
-      if (missing.length > 0) {
-        return { error: `Campos obrigatórios ausentes: ${missing.join(', ')}` };
+
+      // Aceita projectName no topo OU dentro de meta.project (formato legado)
+      if (!data.projectName && data.meta?.project) {
+        data.projectName = data.meta.project;
+      }
+      // Aceita 'params' (saveProject) ou 'parameters' (exportJSON)
+      if (!data.parameters && data.params) {
+        data.parameters = data.params;
+      }
+
+      if (!data.projectName) {
+        return { error: 'Campo obrigatório ausente: projectName. Verifique se o arquivo é um projeto HydroBalance válido.' };
       }
       return { data };
     } catch (e) {

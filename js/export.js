@@ -82,36 +82,48 @@ const exportModule = (() => {
     const ts = getTimestamp();
     const projectName = document.getElementById('projectName')?.value || 'Projeto';
 
+    const getN = id => +( document.getElementById(id)?.value ?? 0);
+
     const payload = {
+      // projectName no topo — campo obrigatório para loadProject()
+      projectName,
       meta: {
         app: 'HydroBalance AI v2.1',
         exportDate: new Date().toISOString(),
         project: projectName,
         dmc: 'Norte-01'
       },
+      // Todos os parâmetros da UI — restaurados ao carregar
       parameters: {
-        haxPer1: +document.getElementById('p_haxPer1')?.value || 4,
-        haxPer2: +document.getElementById('p_haxPer2')?.value || 10,
-        E1: +document.getElementById('p_E1')?.value || 1.0,
-        n1: 0.5,
-        reservoir: +document.getElementById('p_reservoir')?.value || 0
+        haxPer1:       getN('p_haxPer1'),
+        haxPer2:       getN('p_haxPer2'),
+        E1:            getN('p_E1'),
+        diBloco:       getN('p_diBloco'),
+        pEstad1:       getN('p_pEstad1'),
+        diZona:        getN('p_diZona'),
+        autoPri:       getN('p_autoPri'),
+        dias:          getN('p_dias'),
+        reservoirPct:  getN('p_reservoir'),
+        additionalFlow:getN('additionalFlow')
       },
-      consumptionData: appState.consumptionData,
-      sources: appState.sources,
-      pressurePoints: appState.pressurePoints,
+      consumptionData:    appState.consumptionData,
+      sources:            appState.sources,
+      pressurePoints:     appState.pressurePoints,
+      consumptionPattern: appState.consumptionPattern,   // padrão horário customizado
+      measuredSeries:     appState.measuredSeries,        // série medida manual
       analysis: appState.lastAnalysis ? {
-        kpis: appState.lastAnalysis.kpis,
-        balance: appState.lastAnalysis.balance,
-        vmn: appState.lastAnalysis.vmn,
+        kpis:          appState.lastAnalysis.kpis,
+        balance:       appState.lastAnalysis.balance,
+        vmn:           appState.lastAnalysis.vmn,
         normalizedCurve: appState.lastAnalysis.normalized
       } : null,
       series: {
-        hours: MOCK.hours,
-        flowTotal: MOCK.flowTotal,
-        flowSimulated: MOCK.flowSimulated,
-        flowCalibrated: MOCK.flowCalibrated,
-        flowConsumption: MOCK.flowConsumption,
-        flowRealLoss: MOCK.flowRealLoss,
+        hours:          MOCK.hours,
+        flowTotal:      appState.currentData?.flowTotal      || MOCK.flowTotal,
+        flowSimulated:  appState.currentData?.flowSimulated  || MOCK.flowSimulated,
+        flowCalibrated: appState.currentData?.flowCalibrated || MOCK.flowCalibrated,
+        flowConsumption:appState.currentData?.flowConsumption|| MOCK.flowConsumption,
+        flowRealLoss:   appState.currentData?.flowRealLoss   || MOCK.flowRealLoss,
         pressurePoint1: MOCK.pressurePoint1,
         pressurePoint2: MOCK.pressurePoint2,
         reservoirLevel: MOCK.reservoirLevel

@@ -431,15 +431,70 @@ const app = (() => {
         const res = parser.parseProjectJSON(ev.target.result);
         if (res.error) { ui.toast(res.error, 'error'); return; }
         const d = res.data;
-        const el = document.getElementById('projectName');
-        if (el && d.projectName) el.value = d.projectName;
-        if (d.consumptionData) {
+
+        // ── Nome do projeto ──────────────────────────
+        const nameEl = document.getElementById('projectName');
+        if (nameEl && d.projectName) nameEl.value = d.projectName;
+
+        // ── Cadastro de Consumo ──────────────────────
+        if (d.consumptionData?.length) {
           document.getElementById('consumptionBody').innerHTML = '';
           appState.consumptionData = [];
-          d.consumptionData.forEach(row => { appState.consumptionData.push(row); ui.renderConsumptionRow(row); });
+          d.consumptionData.forEach(row => {
+            appState.consumptionData.push(row);
+            ui.renderConsumptionRow(row);
+          });
           ui.updateConsumptionStats();
         }
-        ui.toast(`"${d.projectName || 'projeto'}" carregado.`, 'success');
+
+        // ── Fontes de Vazão ──────────────────────────
+        if (d.sources?.length) {
+          document.getElementById('sourcesList').innerHTML = '';
+          appState.sources = [];
+          d.sources.forEach(s => ui.addSource(s));
+        }
+
+        // ── Pontos de Pressão ────────────────────────
+        if (d.pressurePoints?.length) {
+          document.getElementById('pressuresList').innerHTML = '';
+          appState.pressurePoints = [];
+          d.pressurePoints.forEach(p => ui.addPressurePoint(p));
+        }
+
+        // ── Parâmetros FAVAD ─────────────────────────
+        const params = d.parameters || d.params || {};
+        const paramMap = {
+          p_haxPer1:     params.haxPer1,
+          p_haxPer2:     params.haxPer2,
+          p_E1:          params.E1 ?? params.n1,
+          p_diBloco:     params.diBloco,
+          p_pEstad1:     params.pEstad1,
+          p_diZona:      params.diZona,
+          p_autoPri:     params.autoPri,
+          p_dias:        params.dias,
+          p_reservoir:   params.reservoirPct,
+          additionalFlow:params.additionalFlow
+        };
+        Object.entries(paramMap).forEach(([id, val]) => {
+          if (val != null) { const el = document.getElementById(id); if (el) el.value = val; }
+        });
+
+        // ── Padrão horário ───────────────────────────
+        if (d.consumptionPattern?.length === 24) {
+          appState.consumptionPattern = d.consumptionPattern;
+          const badge = document.getElementById('patternLabel');
+          if (badge) badge.textContent = 'Importado';
+        }
+
+        // ── Série medida manual ──────────────────────
+        if (d.measuredSeries?.length === 24) {
+          appState.measuredSeries = d.measuredSeries;
+          const badge = document.getElementById('measuredLabel');
+          if (badge) badge.textContent = 'Série manual';
+        }
+
+        if (typeof lucide !== 'undefined') lucide.createIcons();
+        ui.toast(`Projeto "${d.projectName}" carregado com sucesso.`, 'success');
         runAnalysis();
       };
       r.readAsText(f);
