@@ -306,8 +306,6 @@ const exportModule = (() => {
       `# Exportado: ${new Date().toLocaleString('pt-BR')}`,
       `# Média calibrada (m³/h): ${calibAvgFlow}`,
       '# ATENÇÃO: Use a coluna Mult_Calibrado para importar no EPANET/WaterGEMS',
-      `# Média vazão (L/s): ${normalized.avg.toFixed(3)}`,
-      `# Fator de pico: ${normalized.peakFactor}`,
       '',
       'Hora;Hora_Decimal;Mult_Simulado;Mult_Calibrado;Mult_Perdas;Vazao_Medida_m3h;Consumo_m3h;Perda_Real_m3h',
       ...MOCK.hours.map((h, i) => [
