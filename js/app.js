@@ -403,9 +403,63 @@ const app = (() => {
   }
 
   // ══════════════════════════════════════════════════════
+  // SYNC ALL DOM → appState BEFORE SAVE
+  // Garante que valores digitados (sem blur) sejam capturados
+  // ══════════════════════════════════════════════════════
+  function syncAllFromDOM() {
+
+    // Seção 1 — Fontes de Vazão
+    document.querySelectorAll('[id^="source-"]').forEach(div => {
+      const m = div.id.match(/^source-(\d+)$/);
+      if (!m) return;
+      const src = appState.sources.find(s => s.id === +m[1]);
+      if (!src) return;
+      const sel = div.querySelector('select.f-select');
+      if (sel) src.type = sel.value;
+      const nums = div.querySelectorAll('input[type="number"].f-input');
+      if (nums[0]) src.multiplier = +nums[0].value || 1;
+      if (nums[1]) src.flowMin    = +nums[1].value || 0;
+      if (nums[2]) src.flowMax    = +nums[2].value || 0;
+      if (nums[3]) src.interval   = +nums[3].value || 15;
+      const chks = div.querySelectorAll('input[type="checkbox"]');
+      if (chks[0]) src.validOnly   = chks[0].checked;
+      if (chks[1]) src.interpolate = chks[1].checked;
+    });
+
+    // Seção 2 — Pressões Medidas
+    document.querySelectorAll('[id^="pressure-"]').forEach(div => {
+      const m = div.id.match(/^pressure-(\d+)$/);
+      if (!m) return;
+      const pt = appState.pressurePoints.find(p => p.id === +m[1]);
+      if (!pt) return;
+      const inputs = div.querySelectorAll('input.f-input');
+      if (inputs[0]) pt.sensor = inputs[0].value;
+      if (inputs[1]) pt.cota   = +inputs[1].value || 0;
+      if (inputs[2]) pt.pMin   = +inputs[2].value || 0;
+      if (inputs[3]) pt.pMax   = +inputs[3].value || 0;
+    });
+
+    // Seção 3 — Cadastro de Consumo
+    document.querySelectorAll('#consumptionBody tr[id^="crow-"]').forEach(tr => {
+      const m = tr.id.match(/crow-(\d+)/);
+      if (!m) return;
+      const row = appState.consumptionData.find(r => r.id === +m[1]);
+      if (!row) return;
+      const inputs = tr.querySelectorAll('input');
+      if (inputs[0]) row.category       = inputs[0].value;
+      if (inputs[1]) row.connections    = +inputs[1].value || 0;
+      if (inputs[2]) row.avgConsumption = +inputs[2].value || 0;
+    });
+
+    // Seção 4 — Parâmetros FAVAD: lidos diretamente do DOM via gatherParams()
+    // (não precisa sync manual — exportJSON lê o DOM em tempo real)
+  }
+
+  // ══════════════════════════════════════════════════════
   // PROJECT SAVE / LOAD
   // ══════════════════════════════════════════════════════
   function saveProject() {
+    syncAllFromDOM(); // captura valores digitados antes de qualquer blur
     const name = document.getElementById('projectName')?.value || 'Projeto';
     const proj = {
       version: '2.1', projectName: name,
@@ -558,7 +612,7 @@ const app = (() => {
     init, runAnalysis, calculateBalance,
     refreshInsights, recalculateFromSources,
     saveProject, loadProject,
-    gatherParams, buildScaledData, liveUpdate
+    gatherParams, buildScaledData, liveUpdate, syncAllFromDOM
   };
 })();
 

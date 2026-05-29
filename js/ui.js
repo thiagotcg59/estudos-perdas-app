@@ -146,22 +146,22 @@ const ui = (() => {
         <div class="item-row">
           <label>Sensor</label>
           <input type="text" class="f-input" value="${data.sensor}"
-            onchange="ui.updatePressure(${data.id},'sensor',this.value)">
+            oninput="ui.updatePressure(${data.id},'sensor',this.value)">
         </div>
         <div class="item-row">
           <label>Cota (m)</label>
           <input type="number" class="f-input" value="${data.cota}" step="0.5"
-            onchange="ui.updatePressure(${data.id},'cota',+this.value)">
+            oninput="ui.updatePressure(${data.id},'cota',+this.value)">
         </div>
         <div class="item-row">
           <label>P Mín (mca)</label>
           <input type="number" class="f-input" value="${data.pMin}" step="1"
-            onchange="ui.updatePressure(${data.id},'pMin',+this.value)">
+            oninput="ui.updatePressure(${data.id},'pMin',+this.value)">
         </div>
         <div class="item-row">
           <label>P Máx (mca)</label>
           <input type="number" class="f-input" value="${data.pMax}" step="1"
-            onchange="ui.updatePressure(${data.id},'pMax',+this.value)">
+            oninput="ui.updatePressure(${data.id},'pMax',+this.value)">
         </div>
         <div style="text-align:right">
           <button class="btn-sm" onclick="document.getElementById('pressFile${data.id}').click()">
@@ -208,11 +208,11 @@ const ui = (() => {
     tr.id = `crow-${data.id}`;
     tr.innerHTML = `
       <td><input type="text" value="${data.category}"
-        onchange="ui.updateConsumption(${data.id},'category',this.value)"></td>
+        oninput="ui.updateConsumption(${data.id},'category',this.value)"></td>
       <td><input type="number" value="${data.connections}" style="width:56px"
-        onchange="ui.updateConsumption(${data.id},'connections',+this.value);ui.updateConsumptionStats()"></td>
+        oninput="ui.updateConsumption(${data.id},'connections',+this.value);ui.updateConsumptionStats()"></td>
       <td><input type="number" value="${data.avgConsumption.toFixed(6)}" step="0.001"
-        onchange="ui.updateConsumption(${data.id},'avgConsumption',+this.value);ui.updateConsumptionStats()"></td>
+        oninput="ui.updateConsumption(${data.id},'avgConsumption',+this.value);ui.updateConsumptionStats()"></td>
       <td>
         <button class="item-remove" onclick="ui.removeConsumptionRow(${data.id})" style="padding:2px">
           <i data-lucide="trash-2"></i>

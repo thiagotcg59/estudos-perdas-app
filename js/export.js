@@ -79,6 +79,7 @@ const exportModule = (() => {
   // JSON EXPORT
   // ══════════════════════════════════════════════════════
   function exportJSON() {
+    if (typeof app !== 'undefined') app.syncAllFromDOM(); // sync DOM → appState antes de exportar
     const ts = getTimestamp();
     const projectName = document.getElementById('projectName')?.value || 'Projeto';
 
