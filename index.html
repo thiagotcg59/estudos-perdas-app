@@ -67,6 +67,12 @@
         <div class="panel-body" id="pSources-body">
           <div id="sourcesList"></div>
           <button class="btn-add" onclick="ui.addSource()"><i data-lucide="plus"></i> Adicionar Fonte</button>
+          <div class="toolbar-row" style="margin-top:6px">
+            <button class="btn-sm btn-pattern" onclick="ui.openMeasuredEditor()" title="Inserir manualmente as vazões medidas hora a hora">
+              <i data-lucide="table-2"></i> Inserir Série Manual
+            </button>
+            <span id="measuredLabel" class="pattern-badge">MOCK padrão</span>
+          </div>
           <div class="field-row mt8">
             <label>Vazão Constante Adicional</label>
             <div class="input-unit">

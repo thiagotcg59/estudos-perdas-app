@@ -494,7 +494,8 @@ const ui = (() => {
   // ══════════════════════════════════════════════════════
   // PATTERN EDITOR
   // ══════════════════════════════════════════════════════
-  let _patternChart = null;
+  let _patternChart  = null;
+  let _measuredChart = null;
 
   function openPatternEditor() {
     const current = appState.consumptionPattern || MOCK.consumptionPatterns.residential;
@@ -674,6 +675,161 @@ const ui = (() => {
     return values;
   }
 
+  // ══════════════════════════════════════════════════════
+  // MEASURED SERIES EDITOR (vazões medidas 24h)
+  // ══════════════════════════════════════════════════════
+  function openMeasuredEditor() {
+    const current = appState.measuredSeries || MOCK.flowTotal;
+    const hours   = MOCK.hours;
+
+    const gridHTML = hours.map((h, i) => `
+      <div class="pe-cell">
+        <label class="pe-label">${h}</label>
+        <input type="number" id="ms_h${i}" class="pe-input f-input"
+          value="${current[i].toFixed(2)}" step="0.5" min="0"
+          oninput="ui.updateMeasuredPreview()">
+      </div>`).join('');
+
+    const body = `
+      <div class="pe-wrap">
+        <div class="pe-top">
+          <div style="font-size:11px;color:var(--text-dim);line-height:1.5">
+            Insira a <strong style="color:var(--accent)">vazão medida (m³/h)</strong> para cada hora do dia.
+            Esses valores alimentam diretamente a curva <span style="color:#ef5350">● Medido (Total)</span> no gráfico.
+            O multiplicador da fonte ainda é aplicado por cima.
+          </div>
+          <div class="pe-chart-wrap">
+            <canvas id="measuredPreviewCanvas" height="110"></canvas>
+          </div>
+          <div class="pe-stats-row" id="msStats">
+            <span>Pico: <strong id="msPeak">—</strong></span>
+            <span>Mínimo: <strong id="msMin">—</strong></span>
+            <span>Média: <strong id="msAvg">—</strong></span>
+            <span>Volume/dia: <strong id="msVol">—</strong></span>
+          </div>
+        </div>
+
+        <div class="pe-grid">${gridHTML}</div>
+
+        <div class="pe-actions-row">
+          <button class="btn-sm" onclick="ui.resetMeasuredSeries()" title="Voltar ao MOCK padrão">
+            <i data-lucide="rotate-ccw"></i> Resetar
+          </button>
+          <div style="flex:1"></div>
+          <button class="btn-sm" onclick="ui.closeModal()">Cancelar</button>
+          <button class="btn-calculate" style="width:auto;padding:6px 20px;margin:0"
+            onclick="ui.applyMeasuredSeries()">
+            <i data-lucide="check"></i> Aplicar Série
+          </button>
+        </div>
+      </div>`;
+
+    openModal('Série de Vazão Medida — 24h (m³/h)', body);
+    if (typeof lucide !== 'undefined') lucide.createIcons();
+
+    setTimeout(() => {
+      _initMeasuredChart(current);
+      _updateMeasuredStats(current);
+    }, 80);
+  }
+
+  function _initMeasuredChart(values) {
+    const ctx = document.getElementById('measuredPreviewCanvas');
+    if (!ctx) return;
+    if (_measuredChart) { _measuredChart.destroy(); _measuredChart = null; }
+
+    _measuredChart = new Chart(ctx, {
+      type: 'line',
+      data: {
+        labels: MOCK.hours.map(h => h.slice(0,5)),
+        datasets: [{
+          label: 'Medido (m³/h)',
+          data: values,
+          borderColor: '#ef5350',
+          backgroundColor: 'rgba(239,83,80,0.12)',
+          borderWidth: 2,
+          pointRadius: 3,
+          pointBackgroundColor: '#ef5350',
+          fill: true,
+          tension: 0.4
+        }]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+          legend: { display: false },
+          tooltip: {
+            backgroundColor: 'rgba(7,20,32,.95)',
+            borderColor: '#00b8d4',
+            borderWidth: 1,
+            callbacks: { label: ctx => ` ${ctx.parsed.y.toFixed(2)} m³/h` }
+          }
+        },
+        scales: {
+          x: { grid: { color: 'rgba(0,184,212,0.06)' }, ticks: { color: '#6a9bac', font: { size: 9 } } },
+          y: { grid: { color: 'rgba(0,184,212,0.06)' }, ticks: { color: '#6a9bac', font: { size: 9 } }, min: 0 }
+        }
+      }
+    });
+  }
+
+  function updateMeasuredPreview() {
+    const values = _readMeasuredInputs();
+    if (!values) return;
+    if (_measuredChart) {
+      _measuredChart.data.datasets[0].data = values;
+      _measuredChart.update('none');
+    }
+    _updateMeasuredStats(values);
+  }
+
+  function _updateMeasuredStats(values) {
+    if (!values || values.length < 24) return;
+    const avg  = values.reduce((a,b)=>a+b,0) / values.length;
+    const peak = Math.max(...values);
+    const min  = Math.min(...values);
+    const vol  = avg * 24;
+    setEl('msPeak', peak.toFixed(2) + ' m³/h');
+    setEl('msMin',  min.toFixed(2)  + ' m³/h');
+    setEl('msAvg',  avg.toFixed(2)  + ' m³/h');
+    setEl('msVol',  vol.toFixed(0)  + ' m³/dia');
+  }
+
+  function applyMeasuredSeries() {
+    const values = _readMeasuredInputs();
+    if (!values) { toast('Valores inválidos na série.', 'error'); return; }
+
+    appState.measuredSeries = values;
+    const badge = document.getElementById('measuredLabel');
+    if (badge) badge.textContent = 'Série manual';
+
+    closeModal();
+    app.liveUpdate();
+    toast('Série de vazão medida aplicada ao gráfico.', 'success');
+  }
+
+  function resetMeasuredSeries() {
+    appState.measuredSeries = null;
+    const badge = document.getElementById('measuredLabel');
+    if (badge) badge.textContent = 'MOCK padrão';
+    closeModal();
+    app.liveUpdate();
+    toast('Série resetada para o padrão MOCK.', 'info');
+  }
+
+  function _readMeasuredInputs() {
+    const values = [];
+    for (let i = 0; i < 24; i++) {
+      const el = document.getElementById(`ms_h${i}`);
+      if (!el) return null;
+      const v = parseFloat(el.value);
+      if (isNaN(v) || v < 0) return null;
+      values.push(v);
+    }
+    return values;
+  }
+
   function importPatternCSV(inputEl) {
     parser.parsePatternCSV(inputEl);
     closeModal();
@@ -746,6 +902,10 @@ const ui = (() => {
     applyPatternPreset,
     applyPattern,
     updatePatternPreview,
-    importPatternCSV
+    importPatternCSV,
+    openMeasuredEditor,
+    updateMeasuredPreview,
+    applyMeasuredSeries,
+    resetMeasuredSeries
   };
 })();

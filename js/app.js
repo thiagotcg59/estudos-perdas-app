@@ -11,7 +11,8 @@ const appState = {
   currentData: null,
   activeTab: 'd1',
   projectDirty: false,
-  consumptionPattern: null   // null = usa MOCK.consumptionPatterns.residential
+  consumptionPattern: null,  // null = usa MOCK.consumptionPatterns.residential
+  measuredSeries: null       // null = usa MOCK.flowTotal (hardcoded)
 };
 
 const app = (() => {
@@ -129,10 +130,17 @@ const app = (() => {
     // Adicional constante (m³/h)
     const addFlow = parseFloat(params.additionalFlow) || 0;
 
-    // flowTotal = curva medida (MOCK × multiplicador + adicional)
-    const mockTotalAvg = mathAvg(MOCK.flowTotal);
-    const measuredAvg  = mockTotalAvg * combinedMult + addFlow;
-    const flowTotal    = scaleArr(MOCK.flowTotal, measuredAvg);
+    // flowTotal = curva medida
+    // Se o usuário inseriu série manual → usa diretamente (× multiplicador)
+    // Caso contrário → usa forma do MOCK escalada
+    let flowTotal;
+    if (appState.measuredSeries) {
+      flowTotal = appState.measuredSeries.map(v => +(v * combinedMult + addFlow).toFixed(3));
+    } else {
+      const mockTotalAvg = mathAvg(MOCK.flowTotal);
+      const measuredAvg  = mockTotalAvg * combinedMult + addFlow;
+      flowTotal = scaleArr(MOCK.flowTotal, measuredAvg);
+    }
 
     // ── 2. Cadastro de Consumo ────────────────────────
     const tableConsumM3h = appState.consumptionData.reduce(
