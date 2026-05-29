@@ -504,8 +504,9 @@ const ui = (() => {
     const gridHTML = hours.map((h, i) => `
       <div class="pe-cell">
         <label class="pe-label">${h}</label>
-        <input type="number" id="pe_h${i}" class="pe-input f-input"
-          value="${current[i].toFixed(3)}" step="0.01" min="0" max="9.99"
+        <input type="text" inputmode="decimal" id="pe_h${i}" class="pe-input f-input"
+          value="${current[i].toFixed(3).replace('.', ',')}"
+          placeholder="0,000"
           oninput="ui.updatePatternPreview()">
       </div>`).join('');
 
@@ -642,7 +643,7 @@ const ui = (() => {
     if (!preset) return;
     preset.forEach((v, i) => {
       const el = document.getElementById(`pe_h${i}`);
-      if (el) el.value = v.toFixed(3);
+      if (el) el.value = v.toFixed(3).replace('.', ',');
     });
     updatePatternPreview();
     toast(`Preset "${name}" carregado. Clique em Aplicar para confirmar.`, 'info', 2500);
@@ -663,12 +664,28 @@ const ui = (() => {
     toast('Padrão de consumo aplicado ao gráfico.', 'success');
   }
 
+  function _parseLocale(str) {
+    // Aceita tanto "3.0" (EN) quanto "3,0" (BR)
+    str = String(str).trim();
+    const hasComma  = str.includes(',');
+    const hasPeriod = str.includes('.');
+    if (hasComma && hasPeriod) {
+      // Detecta qual é o separador decimal (o último)
+      str = str.lastIndexOf(',') > str.lastIndexOf('.')
+        ? str.replace(/\./g, '').replace(',', '.')   // BR: 1.234,56
+        : str.replace(/,/g, '');                      // EN: 1,234.56
+    } else if (hasComma) {
+      str = str.replace(',', '.');  // BR decimal sem milhar: 3,0 → 3.0
+    }
+    return parseFloat(str);
+  }
+
   function _readPatternInputs() {
     const values = [];
     for (let i = 0; i < 24; i++) {
       const el = document.getElementById(`pe_h${i}`);
       if (!el) return null;
-      const v = parseFloat(el.value);
+      const v = _parseLocale(el.value);
       if (isNaN(v) || v < 0) return null;
       values.push(v);
     }
@@ -685,8 +702,9 @@ const ui = (() => {
     const gridHTML = hours.map((h, i) => `
       <div class="pe-cell">
         <label class="pe-label">${h}</label>
-        <input type="number" id="ms_h${i}" class="pe-input f-input"
-          value="${current[i].toFixed(2)}" step="0.5" min="0"
+        <input type="text" inputmode="decimal" id="ms_h${i}" class="pe-input f-input"
+          value="${current[i].toFixed(2).replace('.', ',')}"
+          placeholder="0,00"
           oninput="ui.updateMeasuredPreview()">
       </div>`).join('');
 
@@ -823,7 +841,7 @@ const ui = (() => {
     for (let i = 0; i < 24; i++) {
       const el = document.getElementById(`ms_h${i}`);
       if (!el) return null;
-      const v = parseFloat(el.value);
+      const v = _parseLocale(el.value);
       if (isNaN(v) || v < 0) return null;
       values.push(v);
     }

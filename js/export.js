@@ -17,6 +17,13 @@ const exportModule = (() => {
     URL.revokeObjectURL(url);
   }
 
+  // Formata número para CSV PT-BR: vírgula como decimal, ponto como milhar
+  // Necessário pois Excel BR interpreta "1.2000" como 1200 (ponto = milhar)
+  const n4 = v => (+v).toFixed(4).replace('.', ',');
+  const n3 = v => (+v).toFixed(3).replace('.', ',');
+  const n2 = v => (+v).toFixed(2).replace('.', ',');
+  const n1 = v => (+v).toFixed(1).replace('.', ',');
+
   function getTimestamp() {
     const d = new Date();
     return `${d.getFullYear()}${String(d.getMonth()+1).padStart(2,'0')}${String(d.getDate()).padStart(2,'0')}_${String(d.getHours()).padStart(2,'0')}${String(d.getMinutes()).padStart(2,'0')}`;
@@ -52,15 +59,15 @@ const exportModule = (() => {
 
     const rows = mockData.hours.map((h, i) => [
       h,
-      (mockData.flowTotal[i] || 0).toFixed(3),
-      (mockData.flowSimulated[i] || 0).toFixed(3),
-      (mockData.flowCalibrated[i] || 0).toFixed(3),
-      (mockData.flowConsumption[i] || 0).toFixed(3),
-      (mockData.flowRealLoss[i] || 0).toFixed(3),
-      (mockData.flowApparentLoss[i] || 0).toFixed(3),
-      (mockData.pressurePoint1[i] || 0).toFixed(2),
-      (mockData.pressurePoint2[i] || 0).toFixed(2),
-      (mockData.reservoirLevel[i] || 0).toFixed(1)
+      n3(mockData.flowTotal[i]       || 0),
+      n3(mockData.flowSimulated[i]   || 0),
+      n3(mockData.flowCalibrated[i]  || 0),
+      n3(mockData.flowConsumption[i] || 0),
+      n3(mockData.flowRealLoss[i]    || 0),
+      n3(mockData.flowApparentLoss[i]|| 0),
+      n2(mockData.pressurePoint1[i]  || 0),
+      n2(mockData.pressurePoint2[i]  || 0),
+      n1(mockData.reservoirLevel[i]  || 0)
     ].join(';'));
 
     const csvContent = [header, ...rows].join('\n');
@@ -310,13 +317,13 @@ const exportModule = (() => {
       'Hora;Hora_Decimal;Mult_Simulado;Mult_Calibrado;Mult_Perdas;Vazao_Medida_m3h;Consumo_m3h;Perda_Real_m3h',
       ...MOCK.hours.map((h, i) => [
         h,
-        i.toFixed(1),
-        (simPattern[i] || 1).toFixed(4),
-        calibPattern[i].toFixed(4),
-        lossNorm.multipliers[i].toFixed(4),
-        (data?.flowTotal[i]       || MOCK.flowTotal[i]).toFixed(3),
-        (data?.flowConsumption[i] || MOCK.flowConsumption[i]).toFixed(3),
-        (data?.flowRealLoss[i]    || MOCK.flowRealLoss[i]).toFixed(3)
+        n1(i),
+        n4(simPattern[i] || 1),
+        n4(calibPattern[i]),
+        n4(lossNorm.multipliers[i]),
+        n3(data?.flowTotal[i]       ?? MOCK.flowTotal[i]),
+        n3(data?.flowConsumption[i] ?? MOCK.flowConsumption[i]),
+        n3(data?.flowRealLoss[i]    ?? MOCK.flowRealLoss[i])
       ].join(';'))
     ];
 
