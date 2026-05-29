@@ -164,7 +164,22 @@ const app = (() => {
     const realLossAvg = lossAvg * realFraction;
     const appLossAvg  = lossAvg * appFraction;
 
-    const flowRealLoss     = scaleArr(MOCK.flowRealLoss,     realLossAvg);
+    // ── FAVAD: perdas reais seguem (P[h] / P_avg)^N1 ──────
+    // Fator E1 = expoente N1 da relação pressão-vazamento
+    // → N1 alto: perdas muito sensíveis à pressão (forma da curva muda muito)
+    // → N1 baixo (≈0): perdas constantes independente da pressão
+    // Pressão usada: média dos pontos monitorados (ou P01 se disponível)
+    const n1 = Math.max(0, params.E1 !== undefined ? params.E1 : 0.5);
+    const pressureSeries = MOCK.pressurePoint1; // substitua por série importada quando disponível
+    const pressureAvg = mathAvg(pressureSeries);
+
+    // Forma horária das perdas reais = pressão normalizada elevada ao N1
+    const favadShape = pressureSeries.map(p =>
+      Math.pow(Math.max(0.01, p) / Math.max(0.01, pressureAvg), n1)
+    );
+
+    // Perdas aparentes: menos sensíveis à pressão — usam shape fixo (medição/fraude)
+    const flowRealLoss     = scaleArr(favadShape,            realLossAvg);
     const flowApparentLoss = scaleArr(MOCK.flowApparentLoss, appLossAvg);
 
     // ── 4. Curvas derivadas ───────────────────────────
