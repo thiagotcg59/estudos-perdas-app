@@ -168,21 +168,34 @@ const app = (() => {
     const flowApparentLoss = scaleArr(MOCK.flowApparentLoss, appLossAvg);
 
     // ── 4. Curvas derivadas ───────────────────────────
-    // Calibrado = soma dos componentes (target do modelo)
+
+    // SIMULADO = padrão de consumo aplicado à média do medido total
+    // Responde à pergunta: "se a demanda seguisse perfeitamente o padrão
+    // declarado, como seria a curva para este nível de vazão?"
+    // → diferença entre Simulado e Medido = sinal de calibração
+    const flowSimulated = scaleArr(patternBase, mathAvg(flowTotal));
+
+    // CALIBRADO = consumo + perdas calculadas (modelo pós-calibração)
+    // → deve convergir para o Medido após boa calibração
     const flowCalibrated = flowConsumption.map((c, i) =>
       +(c + flowRealLoss[i] + flowApparentLoss[i]).toFixed(3));
 
-    // Simulado = flowTotal × 0.97 (antes da calibração)
-    const flowSimulated = flowTotal.map(v => +(v * 0.97).toFixed(3));
+    // PADRÃO CALIBRADO = multiplicadores horários extraídos do Calibrado
+    // → estes são os multipliers que vão para o relatório / EPANET
+    const calibAvg = mathAvg(flowCalibrated);
+    const calibratedPattern = calibAvg > 0
+      ? flowCalibrated.map(v => +(v / calibAvg).toFixed(4))
+      : Array(24).fill(1);
 
     return {
       ...MOCK,
-      flowTotal,       // ← muda com Multiplicador da fonte
-      flowSimulated,   // ← muda com Multiplicador da fonte
-      flowConsumption, // ← muda com tabela de consumo
-      flowRealLoss,    // ← muda com Multiplicador + haxPer1/haxPer2
-      flowApparentLoss,// ← muda com Multiplicador + haxPer1/haxPer2
-      flowCalibrated   // ← muda com tabela de consumo + haxPer1/haxPer2
+      flowTotal,         // ← Medido: série manual ou MOCK × multiplicador
+      flowSimulated,     // ← Padrão de consumo escalado ao nível do medido
+      flowConsumption,   // ← Consumo Efetivo: cadastro × padrão horário
+      flowRealLoss,      // ← Perdas Reais: (Medido − Consumo) × fração haxPer1
+      flowApparentLoss,  // ← Perdas Aparentes: (Medido − Consumo) × fração haxPer2
+      flowCalibrated,    // ← Calibrado: Consumo + Perdas (modelo)
+      calibratedPattern  // ← Padrão calibrado para relatório / EPANET export
     };
   }
 

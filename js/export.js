@@ -122,21 +122,34 @@ const exportModule = (() => {
     const ts = getTimestamp();
     const projectName = document.getElementById('projectName')?.value || 'HydroBalance';
 
-    let normalized;
-    if (appState.lastAnalysis) {
-      normalized = appState.lastAnalysis.normalized;
+    // Usa o padrão CALIBRADO (gerado pelo modelo pós-calibração)
+    // Se não disponível, cai no padrão de consumo declarado pelo usuário
+    const data = appState.currentData;
+    let multipliers, patternAvg, patternLabel;
+
+    if (data?.calibratedPattern) {
+      multipliers  = data.calibratedPattern;
+      patternAvg   = data.flowCalibrated
+        ? (data.flowCalibrated.reduce((a,b)=>a+b,0)/24).toFixed(3)
+        : '—';
+      patternLabel = 'Padrão Calibrado (gerado pelo modelo HydroBalance AI)';
     } else {
-      normalized = hydraulicEngine.generateNormalizedCurve(MOCK.flowTotal);
+      const normalized = appState.lastAnalysis?.normalized
+        || hydraulicEngine.generateNormalizedCurve(MOCK.flowTotal);
+      multipliers  = normalized.multipliers;
+      patternAvg   = normalized.avg.toFixed(3);
+      patternLabel = 'Padrão normalizado (flowTotal)';
     }
 
-    const multipliers = normalized.multipliers;
+    const simMultipliers = appState.consumptionPattern
+      || MOCK.consumptionPatterns.residential;
 
     const inpContent = `[TITLE]
  HydroBalance AI — Exportação EPANET
  Projeto: ${projectName}
  Exportado: ${new Date().toLocaleString('pt-BR')}
- Fator de pico: ${normalized.peakFactor}
- Média (m³/h): ${normalized.avg.toFixed(3)}
+ ${patternLabel}
+ Média Calibrada (m³/h): ${patternAvg}
 
 [JUNCTIONS]
 ;ID              	Elev        	Demand      	Pattern
@@ -164,18 +177,25 @@ const exportModule = (() => {
 
 [PATTERNS]
 ;ID              	Multipliers
-;Padrão de consumo horário gerado por HydroBalance AI
-;Média: ${normalized.avg.toFixed(3)} m³/h | Fator Pico: ${normalized.peakFactor}
- CONSUMO_PADRAO  \t${multipliers.slice(0, 6).map(v => v.toFixed(4)).join('\t')}
- CONSUMO_PADRAO  \t${multipliers.slice(6, 12).map(v => v.toFixed(4)).join('\t')}
- CONSUMO_PADRAO  \t${multipliers.slice(12, 18).map(v => v.toFixed(4)).join('\t')}
- CONSUMO_PADRAO  \t${multipliers.slice(18, 24).map(v => v.toFixed(4)).join('\t')}
+;--- Padrão Simulado (declarado pelo usuário — base do modelo pré-calibração) ---
+;Fonte: Padrão de Consumo Horário / Fontes de Vazão
+ SIMULADO        \t${simMultipliers.slice(0, 6).map(v => v.toFixed(4)).join('\t')}
+ SIMULADO        \t${simMultipliers.slice(6, 12).map(v => v.toFixed(4)).join('\t')}
+ SIMULADO        \t${simMultipliers.slice(12, 18).map(v => v.toFixed(4)).join('\t')}
+ SIMULADO        \t${simMultipliers.slice(18, 24).map(v => v.toFixed(4)).join('\t')}
 
-;Padrão de perdas reais
- PERDAS_REAIS    \t${hydraulicEngine.generateNormalizedCurve(MOCK.flowRealLoss).multipliers.slice(0,6).map(v=>v.toFixed(4)).join('\t')}
- PERDAS_REAIS    \t${hydraulicEngine.generateNormalizedCurve(MOCK.flowRealLoss).multipliers.slice(6,12).map(v=>v.toFixed(4)).join('\t')}
- PERDAS_REAIS    \t${hydraulicEngine.generateNormalizedCurve(MOCK.flowRealLoss).multipliers.slice(12,18).map(v=>v.toFixed(4)).join('\t')}
- PERDAS_REAIS    \t${hydraulicEngine.generateNormalizedCurve(MOCK.flowRealLoss).multipliers.slice(18,24).map(v=>v.toFixed(4)).join('\t')}
+;--- Padrão Calibrado (gerado pelo modelo HydroBalance AI pós-calibração) ---
+;Média: ${patternAvg} m³/h — USE ESTE para importar no EPANET/WaterGEMS
+ CALIBRADO       \t${multipliers.slice(0, 6).map(v => v.toFixed(4)).join('\t')}
+ CALIBRADO       \t${multipliers.slice(6, 12).map(v => v.toFixed(4)).join('\t')}
+ CALIBRADO       \t${multipliers.slice(12, 18).map(v => v.toFixed(4)).join('\t')}
+ CALIBRADO       \t${multipliers.slice(18, 24).map(v => v.toFixed(4)).join('\t')}
+
+;--- Padrão de Perdas Reais ---
+ PERDAS_REAIS    \t${(data?.flowRealLoss ? hydraulicEngine.generateNormalizedCurve(data.flowRealLoss) : hydraulicEngine.generateNormalizedCurve(MOCK.flowRealLoss)).multipliers.slice(0,6).map(v=>v.toFixed(4)).join('\t')}
+ PERDAS_REAIS    \t${(data?.flowRealLoss ? hydraulicEngine.generateNormalizedCurve(data.flowRealLoss) : hydraulicEngine.generateNormalizedCurve(MOCK.flowRealLoss)).multipliers.slice(6,12).map(v=>v.toFixed(4)).join('\t')}
+ PERDAS_REAIS    \t${(data?.flowRealLoss ? hydraulicEngine.generateNormalizedCurve(data.flowRealLoss) : hydraulicEngine.generateNormalizedCurve(MOCK.flowRealLoss)).multipliers.slice(12,18).map(v=>v.toFixed(4)).join('\t')}
+ PERDAS_REAIS    \t${(data?.flowRealLoss ? hydraulicEngine.generateNormalizedCurve(data.flowRealLoss) : hydraulicEngine.generateNormalizedCurve(MOCK.flowRealLoss)).multipliers.slice(18,24).map(v=>v.toFixed(4)).join('\t')}
 
 [CURVES]
 ;ID              	X-Value     	Y-Value
@@ -263,30 +283,42 @@ const exportModule = (() => {
   // ══════════════════════════════════════════════════════
   function exportPatterns() {
     const ts = getTimestamp();
-    let normalized;
-    if (appState.lastAnalysis) {
-      normalized = appState.lastAnalysis.normalized;
-    } else {
-      normalized = hydraulicEngine.generateNormalizedCurve(MOCK.flowTotal);
-    }
-    const lossNorm = hydraulicEngine.generateNormalizedCurve(MOCK.flowRealLoss);
+    const data = appState.currentData;
+
+    // Padrão simulado (declarado pelo usuário)
+    const simPattern = appState.consumptionPattern || MOCK.consumptionPatterns.residential;
+
+    // Padrão calibrado (gerado pelo modelo — principal saída para EPANET)
+    const calibPattern = data?.calibratedPattern
+      || hydraulicEngine.generateNormalizedCurve(MOCK.flowTotal).multipliers;
+
+    // Perdas reais normalizadas
+    const lossNorm = hydraulicEngine.generateNormalizedCurve(
+      data?.flowRealLoss || MOCK.flowRealLoss
+    );
+
+    const calibAvgFlow = data?.flowCalibrated
+      ? (data.flowCalibrated.reduce((a,b)=>a+b,0)/24).toFixed(3) : '—';
 
     const lines = [
       '# HydroBalance AI — Tabela de Multiplicadores',
       `# Projeto: ${document.getElementById('projectName')?.value || 'Projeto'}`,
       `# Exportado: ${new Date().toLocaleString('pt-BR')}`,
+      `# Média calibrada (m³/h): ${calibAvgFlow}`,
+      '# ATENÇÃO: Use a coluna Mult_Calibrado para importar no EPANET/WaterGEMS',
       `# Média vazão (L/s): ${normalized.avg.toFixed(3)}`,
       `# Fator de pico: ${normalized.peakFactor}`,
       '',
-      'Hora;Hora_Decimal;Mult_Consumo;Mult_Perdas;Vazao_Total_m3h;Consumo_Ls;Perda_Real_m3h',
+      'Hora;Hora_Decimal;Mult_Simulado;Mult_Calibrado;Mult_Perdas;Vazao_Medida_m3h;Consumo_m3h;Perda_Real_m3h',
       ...MOCK.hours.map((h, i) => [
         h,
         i.toFixed(1),
-        normalized.multipliers[i].toFixed(4),
+        (simPattern[i] || 1).toFixed(4),
+        calibPattern[i].toFixed(4),
         lossNorm.multipliers[i].toFixed(4),
-        MOCK.flowTotal[i].toFixed(3),
-        MOCK.flowConsumption[i].toFixed(3),
-        MOCK.flowRealLoss[i].toFixed(3)
+        (data?.flowTotal[i]       || MOCK.flowTotal[i]).toFixed(3),
+        (data?.flowConsumption[i] || MOCK.flowConsumption[i]).toFixed(3),
+        (data?.flowRealLoss[i]    || MOCK.flowRealLoss[i]).toFixed(3)
       ].join(';'))
     ];
 
