@@ -494,11 +494,17 @@ const app = (() => {
         if (d.consumptionData?.length) {
           document.getElementById('consumptionBody').innerHTML = '';
           appState.consumptionData = [];
-          d.consumptionData.forEach(row => {
-            appState.consumptionData.push(row);
-            ui.renderConsumptionRow(row);
+          d.consumptionData.forEach(raw => {
+            // Sanitiza cada campo para garantir tipos válidos antes de renderizar
+            const row = {
+              id:            raw.id            || Date.now() + Math.random(),
+              category:      raw.category      || 'Nova Categoria',
+              connections:   +raw.connections  || 0,
+              avgConsumption:+raw.avgConsumption || 0,
+              weight:        +raw.weight       || 1.0
+            };
+            ui.addConsumptionRow(row); // push + render + badge — caminho testado
           });
-          ui.updateConsumptionStats();
         }
 
         // ── Fontes de Vazão ──────────────────────────

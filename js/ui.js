@@ -211,7 +211,7 @@ const ui = (() => {
         oninput="ui.updateConsumption(${data.id},'category',this.value)"></td>
       <td><input type="number" value="${data.connections}" style="width:56px"
         oninput="ui.updateConsumption(${data.id},'connections',+this.value);ui.updateConsumptionStats()"></td>
-      <td><input type="number" value="${data.avgConsumption.toFixed(6)}" step="0.001"
+      <td><input type="number" value="${(+data.avgConsumption || 0).toFixed(6)}" step="0.001"
         oninput="ui.updateConsumption(${data.id},'avgConsumption',+this.value);ui.updateConsumptionStats()"></td>
       <td>
         <button class="item-remove" onclick="ui.removeConsumptionRow(${data.id})" style="padding:2px">
