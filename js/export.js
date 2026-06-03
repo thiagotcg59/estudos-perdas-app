@@ -352,13 +352,19 @@ const exportModule = (() => {
     const analysis = appState.lastAnalysis;
     const now = new Date().toLocaleString('pt-BR');
 
+    // Captura imagens dos gráficos antes de abrir a nova janela
+    const imgMain     = charts.instances.main?.toBase64Image()     || '';
+    const imgPressure = charts.instances.pressure?.toBase64Image() || '';
+    const imgVMN      = charts.instances.vmn?.toBase64Image()      || '';
+
     const kpis = analysis ? analysis.kpis : {
       consumption: 6.02, realLoss: 3.99, apparentLoss: 10.59,
       lossIndex: 51.1, avgFlow: 18.4, vmn: 4.2, peakFactor: 1.48, volume24h: 1897
     };
 
-    const vmn = analysis ? analysis.vmn : hydraulicEngine.detectVMN(MOCK.flowTotal);
+    const vmn  = analysis ? analysis.vmn  : hydraulicEngine.detectVMN(MOCK.flowTotal);
     const norm = analysis ? analysis.normalized : hydraulicEngine.generateNormalizedCurve(MOCK.flowTotal);
+    const data = appState.currentData;
 
     const html = `<!DOCTYPE html><html lang="pt-BR">
 <head><meta charset="UTF-8">
@@ -383,7 +389,9 @@ const exportModule = (() => {
   .insight.danger { background: #ffebee; border-left: 4px solid #f44336; }
   .insight.ok { background: #e8f5e9; border-left: 4px solid #4caf50; }
   .insight.info { background: #e3f2fd; border-left: 4px solid #1e88e5; }
-  @media print { body { margin: 20px; } }
+  .chart-img { width: 100%; border: 1px solid #cfd8dc; border-radius: 6px; margin: 8px 0; background: #0a1826; }
+  .chart-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+  @media print { body { margin: 20px; } .chart-img { page-break-inside: avoid; } }
 </style>
 </head>
 <body>
@@ -418,14 +426,17 @@ const exportModule = (() => {
   </div>
 </div>
 
+<h2>Balanço Hídrico (m³/h) — 24 horas</h2>
+${imgMain ? `<img src="${imgMain}" class="chart-img" alt="Balanço Hídrico">` : '<p style="color:#90a4ae;font-style:italic">Execute uma análise para gerar o gráfico.</p>'}
+
 <h2>Balanço Hídrico IWA</h2>
 <table>
   <thead><tr><th>Componente</th><th>Volume (m³/dia)</th><th>m³/h médio</th><th>%</th></tr></thead>
   <tbody>
     <tr><td>Volume Distribuído (Entrada)</td><td>${kpis.volume24h.toFixed(0)}</td><td>${kpis.avgFlow.toFixed(2)}</td><td>100%</td></tr>
-    <tr><td>Consumo Autorizado Faturado</td><td>${(kpis.consumption*86.4).toFixed(0)}</td><td>${kpis.consumption.toFixed(2)}</td><td>${(kpis.consumption/kpis.avgFlow*100).toFixed(1)}%</td></tr>
-    <tr><td>Perdas Reais</td><td>${(kpis.realLoss*86.4).toFixed(0)}</td><td>${kpis.realLoss.toFixed(2)}</td><td>${(kpis.realLoss/kpis.avgFlow*100).toFixed(1)}%</td></tr>
-    <tr><td>Perdas Aparentes</td><td>${(kpis.apparentLoss*86.4).toFixed(0)}</td><td>${kpis.apparentLoss.toFixed(2)}</td><td>${(kpis.apparentLoss/kpis.avgFlow*100).toFixed(1)}%</td></tr>
+    <tr><td>Consumo Autorizado Faturado</td><td>${(kpis.consumption*24).toFixed(0)}</td><td>${kpis.consumption.toFixed(2)}</td><td>${(kpis.consumption/kpis.avgFlow*100).toFixed(1)}%</td></tr>
+    <tr><td>Perdas Reais</td><td>${(kpis.realLoss*24).toFixed(0)}</td><td>${kpis.realLoss.toFixed(2)}</td><td>${(kpis.realLoss/kpis.avgFlow*100).toFixed(1)}%</td></tr>
+    <tr><td>Perdas Aparentes</td><td>${(kpis.apparentLoss*24).toFixed(0)}</td><td>${kpis.apparentLoss.toFixed(2)}</td><td>${(kpis.apparentLoss/kpis.avgFlow*100).toFixed(1)}%</td></tr>
   </tbody>
 </table>
 
@@ -439,6 +450,17 @@ const exportModule = (() => {
     <tr><td>Perdas Reais Estimadas (VMN)</td><td>${vmn.realLossEstimate} m³/h</td></tr>
   </tbody>
 </table>
+
+<div class="chart-row">
+  <div>
+    <h2 style="margin-top:8px">Perfil de Pressão (mca)</h2>
+    ${imgPressure ? `<img src="${imgPressure}" class="chart-img" alt="Perfil de Pressão">` : ''}
+  </div>
+  <div>
+    <h2 style="margin-top:8px">Curva VMN</h2>
+    ${imgVMN ? `<img src="${imgVMN}" class="chart-img" alt="Curva VMN">` : ''}
+  </div>
+</div>
 
 <h2>Curva Normalizada (Multiplicadores EPANET)</h2>
 <table>
@@ -455,6 +477,25 @@ const exportModule = (() => {
   </thead>
   <tbody>
     <tr>${norm.multipliers.slice(12,24).map(v=>`<td>${v.toFixed(3)}</td>`).join('')}</tr>
+  </tbody>
+</table>
+
+<h2>Série Horária Calibrada (m³/h)</h2>
+<table>
+  <thead>
+    <tr><th>Hora</th><th>Medido</th><th>Calibrado</th><th>Consumo Ef.</th><th>Perda Real</th><th>Perda Apar.</th></tr>
+  </thead>
+  <tbody>
+    ${MOCK.hours.map((h, i) => {
+      const d = appState.currentData;
+      const ft  = d?.flowTotal[i]          ?? MOCK.flowTotal[i];
+      const fc  = d?.flowCalibrated[i]     ?? MOCK.flowCalibrated[i];
+      const fco = d?.flowConsumption[i]    ?? MOCK.flowConsumption[i];
+      const fr  = d?.flowRealLoss[i]       ?? MOCK.flowRealLoss[i];
+      const fa  = d?.flowApparentLoss[i]   ?? MOCK.flowApparentLoss[i];
+      const bg  = i % 2 === 0 ? '' : 'background:#f5fffe';
+      return `<tr style="${bg}"><td>${h}</td><td>${ft.toFixed(2)}</td><td>${fc.toFixed(2)}</td><td>${fco.toFixed(2)}</td><td>${fr.toFixed(2)}</td><td>${fa.toFixed(2)}</td></tr>`;
+    }).join('')}
   </tbody>
 </table>
 
