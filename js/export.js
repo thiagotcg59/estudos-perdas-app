@@ -391,6 +391,9 @@ const exportModule = (() => {
   .insight.info { background: #e3f2fd; border-left: 4px solid #1e88e5; }
   .chart-img { width: 100%; border: 1px solid #cfd8dc; border-radius: 6px; margin: 8px 0; background: #0a1826; }
   .chart-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+  .legend-bar { display: flex; flex-wrap: wrap; gap: 20px; padding: 10px 14px; background: #f5f5f5; border-radius: 6px; margin: 4px 0 16px; font-size: 13px; }
+  .leg-item { display: flex; align-items: center; gap: 7px; font-weight: 500; color: #37474f; }
+  .leg-dot { display: inline-block; width: 14px; height: 14px; border-radius: 50%; flex-shrink: 0; }
   @media print { body { margin: 20px; } .chart-img { page-break-inside: avoid; } }
 </style>
 </head>
@@ -429,6 +432,33 @@ const exportModule = (() => {
 <h2>Balanço Hídrico (m³/h) — 24 horas</h2>
 ${imgMain ? `<img src="${imgMain}" class="chart-img" alt="Balanço Hídrico">` : '<p style="color:#90a4ae;font-style:italic">Execute uma análise para gerar o gráfico.</p>'}
 
+<div class="legend-bar">
+  <span class="leg-item"><span class="leg-dot" style="background:#ef5350"></span>Medido (Total)</span>
+  <span class="leg-item"><span class="leg-dot" style="background:#26a69a"></span>Calibrado</span>
+  <span class="leg-item"><span class="leg-dot" style="background:#ab47bc"></span>Consumo Efetivo</span>
+  <span class="leg-item"><span class="leg-dot" style="background:#ffa726"></span>Perdas Reais</span>
+  <span class="leg-item"><span class="leg-dot" style="background:#ffee58"></span>Perdas Aparentes</span>
+</div>
+
+<h2>Série Horária — 24h (m³/h)</h2>
+<table>
+  <thead>
+    <tr><th>Hora</th><th style="color:#ef9a9a">Medido</th><th style="color:#80cbc4">Calibrado</th><th style="color:#ce93d8">Consumo Ef.</th><th style="color:#ffcc80">Perda Real</th><th style="color:#fff59d">Perda Apar.</th></tr>
+  </thead>
+  <tbody>
+    ${MOCK.hours.map((h, i) => {
+      const d = appState.currentData;
+      const ft  = d?.flowTotal[i]         ?? MOCK.flowTotal[i];
+      const fc  = d?.flowCalibrated[i]    ?? MOCK.flowCalibrated[i];
+      const fco = d?.flowConsumption[i]   ?? MOCK.flowConsumption[i];
+      const fr  = d?.flowRealLoss[i]      ?? MOCK.flowRealLoss[i];
+      const fa  = d?.flowApparentLoss[i]  ?? MOCK.flowApparentLoss[i];
+      const bg  = i % 2 === 0 ? '' : 'background:#f5fffe';
+      return `<tr style="${bg}"><td><strong>${h}</strong></td><td>${ft.toFixed(2)}</td><td>${fc.toFixed(2)}</td><td>${fco.toFixed(2)}</td><td>${fr.toFixed(2)}</td><td>${fa.toFixed(2)}</td></tr>`;
+    }).join('')}
+  </tbody>
+</table>
+
 <h2>Balanço Hídrico IWA</h2>
 <table>
   <thead><tr><th>Componente</th><th>Volume (m³/dia)</th><th>m³/h médio</th><th>%</th></tr></thead>
@@ -451,25 +481,6 @@ ${imgMain ? `<img src="${imgMain}" class="chart-img" alt="Balanço Hídrico">` :
   </tbody>
 </table>
 
-
-<h2>Série Horária Calibrada (m³/h)</h2>
-<table>
-  <thead>
-    <tr><th>Hora</th><th>Medido</th><th>Calibrado</th><th>Consumo Ef.</th><th>Perda Real</th><th>Perda Apar.</th></tr>
-  </thead>
-  <tbody>
-    ${MOCK.hours.map((h, i) => {
-      const d = appState.currentData;
-      const ft  = d?.flowTotal[i]          ?? MOCK.flowTotal[i];
-      const fc  = d?.flowCalibrated[i]     ?? MOCK.flowCalibrated[i];
-      const fco = d?.flowConsumption[i]    ?? MOCK.flowConsumption[i];
-      const fr  = d?.flowRealLoss[i]       ?? MOCK.flowRealLoss[i];
-      const fa  = d?.flowApparentLoss[i]   ?? MOCK.flowApparentLoss[i];
-      const bg  = i % 2 === 0 ? '' : 'background:#f5fffe';
-      return `<tr style="${bg}"><td>${h}</td><td>${ft.toFixed(2)}</td><td>${fc.toFixed(2)}</td><td>${fco.toFixed(2)}</td><td>${fr.toFixed(2)}</td><td>${fa.toFixed(2)}</td></tr>`;
-    }).join('')}
-  </tbody>
-</table>
 
 <h2>Insights Automáticos</h2>
 ${(analysis?.insights || hydraulicEngine.generateInsights(MOCK)).map(ins =>
