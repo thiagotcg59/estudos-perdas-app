@@ -451,34 +451,6 @@ ${imgMain ? `<img src="${imgMain}" class="chart-img" alt="Balanço Hídrico">` :
   </tbody>
 </table>
 
-<div class="chart-row">
-  <div>
-    <h2 style="margin-top:8px">Perfil de Pressão (mca)</h2>
-    ${imgPressure ? `<img src="${imgPressure}" class="chart-img" alt="Perfil de Pressão">` : ''}
-  </div>
-  <div>
-    <h2 style="margin-top:8px">Curva VMN</h2>
-    ${imgVMN ? `<img src="${imgVMN}" class="chart-img" alt="Curva VMN">` : ''}
-  </div>
-</div>
-
-<h2>Curva Normalizada (Multiplicadores EPANET)</h2>
-<table>
-  <thead>
-    <tr>${MOCK.hours.slice(0,12).map(h=>`<th>${h}</th>`).join('')}</tr>
-  </thead>
-  <tbody>
-    <tr>${norm.multipliers.slice(0,12).map(v=>`<td>${v.toFixed(3)}</td>`).join('')}</tr>
-  </tbody>
-</table>
-<table>
-  <thead>
-    <tr>${MOCK.hours.slice(12,24).map(h=>`<th>${h}</th>`).join('')}</tr>
-  </thead>
-  <tbody>
-    <tr>${norm.multipliers.slice(12,24).map(v=>`<td>${v.toFixed(3)}</td>`).join('')}</tr>
-  </tbody>
-</table>
 
 <h2>Série Horária Calibrada (m³/h)</h2>
 <table>
