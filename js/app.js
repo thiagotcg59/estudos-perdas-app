@@ -403,6 +403,92 @@ const app = (() => {
   }
 
   // ══════════════════════════════════════════════════════
+  // AUTO CALIBRATE LOSS PROPORTIONS
+  //
+  // Mantém N1 fixo. Encontra a proporção ótima de perdas
+  // reais × aparentes via mínimos quadrados analítico:
+  //
+  //   Calibrado[h] = Consumo[h] + f·L·R[h] + (1-f)·L·A[h]
+  //   onde f = realFraction, L = lossAvg, R = shape FAVAD,
+  //         A = shape aparente (normalizado)
+  //
+  //   SSE(f) = Σ(Calibrado[h] - Medido[h])²
+  //   dSSE/df = 0  →  f* = Σ(δ[h]·ε[h]) / Σ(δ[h]²)
+  //   com δ[h] = L·(R[h]-A[h])  e  ε[h] = Medido[h] - Consumo[h] - L·A[h]
+  // ══════════════════════════════════════════════════════
+  function autoCalibrateLosses() {
+    const params = gatherParams();
+    const scaledData = buildScaledData(params);
+
+    const mathAvg = arr => arr.reduce((a, b) => a + b, 0) / arr.length;
+
+    const M = scaledData.flowTotal;       // medido (fixo)
+    const C = scaledData.flowConsumption; // consumo (fixo)
+    const totalAvg       = mathAvg(M);
+    const consumptionAvg = mathAvg(C);
+    const L = Math.max(0, totalAvg - consumptionAvg);
+
+    if (L < 0.001) {
+      ui.toast('Perdas totais próximas de zero. Verifique os dados de entrada.', 'warning');
+      return;
+    }
+
+    // Shape FAVAD normalizado (mesma lógica do buildScaledData)
+    const n1 = params.E1 !== undefined ? params.E1 : 0.5;
+    const pressureSeries = MOCK.pressurePoint1;
+    const pressureAvg = mathAvg(pressureSeries);
+    const favadShape    = pressureSeries.map(p =>
+      Math.pow(Math.max(0.01, p) / Math.max(0.01, pressureAvg), n1));
+    const R = (() => {
+      const a = mathAvg(favadShape);
+      return a > 0 ? favadShape.map(v => v / a) : Array(24).fill(1);
+    })();
+
+    // Shape das perdas aparentes normalizado
+    const appShape = MOCK.flowApparentLoss;
+    const A = (() => {
+      const a = mathAvg(appShape);
+      return a > 0 ? appShape.map(v => v / a) : Array(24).fill(1);
+    })();
+
+    // Solução analítica de mínimos quadrados
+    let num = 0, den = 0;
+    for (let h = 0; h < 24; h++) {
+      const delta    = L * (R[h] - A[h]);          // derivada da calibrada em relação a f
+      const residual = M[h] - C[h] - L * A[h];     // erro quando f=0
+      num += delta * residual;
+      den += delta * delta;
+    }
+
+    let f = den > 1e-6 ? num / den : 0.5;
+    f = Math.max(0.01, Math.min(0.99, f));
+
+    // Converte para p1/p2 numa escala de 0–100
+    const p1 = +(f * 100).toFixed(1);
+    const p2 = +((1 - f) * 100).toFixed(1);
+
+    // Atualiza campos da UI
+    const el1 = document.getElementById('p_haxPer1');
+    const el2 = document.getElementById('p_haxPer2');
+    if (el1) el1.value = p1;
+    if (el2) el2.value = p2;
+
+    // Recalcula e atualiza gráfico
+    liveUpdate();
+
+    // Calcula erro médio pós-calibração
+    const newData = buildScaledData(gatherParams());
+    const avgError = newData.flowCalibrated
+      .reduce((s, c, h) => s + Math.abs(c - M[h]), 0) / 24;
+    const pctError = (avgError / totalAvg * 100).toFixed(1);
+
+    ui.toast(
+      `Calibração concluída — Perdas Reais: ${p1.toFixed(0)}%  Aparentes: ${p2.toFixed(0)}%  |  Erro médio: ${pctError}%`,
+      'success', 6000
+    );
+  }
+
+  // ══════════════════════════════════════════════════════
   // SYNC ALL DOM → appState BEFORE SAVE
   // Garante que valores digitados (sem blur) sejam capturados
   // ══════════════════════════════════════════════════════
@@ -618,7 +704,8 @@ const app = (() => {
     init, runAnalysis, calculateBalance,
     refreshInsights, recalculateFromSources,
     saveProject, loadProject,
-    gatherParams, buildScaledData, liveUpdate, syncAllFromDOM
+    gatherParams, buildScaledData, liveUpdate, syncAllFromDOM,
+    autoCalibrateLosses
   };
 })();
 
