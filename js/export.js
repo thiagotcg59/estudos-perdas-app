@@ -459,7 +459,7 @@ ${imgMain ? `<img src="${imgMain}" class="chart-img" alt="Balanço Hídrico">` :
   </tbody>
 </table>
 
-<h2>Balanço Hídrico IWA</h2>
+<h2>Balanço Hídrico</h2>
 <table>
   <thead><tr><th>Componente</th><th>Volume (m³/dia)</th><th>m³/h médio</th><th>%</th></tr></thead>
   <tbody>
@@ -481,11 +481,6 @@ ${imgMain ? `<img src="${imgMain}" class="chart-img" alt="Balanço Hídrico">` :
   </tbody>
 </table>
 
-
-<h2>Insights Automáticos</h2>
-${(analysis?.insights || hydraulicEngine.generateInsights(MOCK)).map(ins =>
-  `<div class="insight ${ins.type}">▶ ${ins.text}</div>`
-).join('')}
 
 <div class="footer">
   Gerado automaticamente por HydroBalance AI v2.1 &nbsp;|&nbsp;
