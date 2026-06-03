@@ -123,7 +123,6 @@ const charts = (() => {
         labels: MOCK.hours,
         datasets: [
           makeDataset('Medido (Total)',    data.flowTotal,          'red',    { borderWidth: 2.5, pointRadius: 2 }),
-          makeDataset('Simulado',          data.flowSimulated,      'blue',   { borderDash: [4,3], pointRadius: 0 }),
           makeDataset('Calibrado',         data.flowCalibrated,     'green',  { borderWidth: 2 }),
           makeDataset('Consumo Efetivo',   data.flowConsumption,    'purple', { fill: true }),
           makeDataset('Perdas Reais',      data.flowRealLoss,       'orange', { fill: true, pointRadius: 2 }),
@@ -343,11 +342,10 @@ const charts = (() => {
   function updateMainChart(data) {
     if (!instances.main) { initMainChart(data); return; }
     instances.main.data.datasets[0].data = data.flowTotal;
-    instances.main.data.datasets[1].data = data.flowSimulated;
-    instances.main.data.datasets[2].data = data.flowCalibrated;
-    instances.main.data.datasets[3].data = data.flowConsumption;
-    instances.main.data.datasets[4].data = data.flowRealLoss;
-    instances.main.data.datasets[5].data = data.flowApparentLoss;
+    instances.main.data.datasets[1].data = data.flowCalibrated;
+    instances.main.data.datasets[2].data = data.flowConsumption;
+    instances.main.data.datasets[3].data = data.flowRealLoss;
+    instances.main.data.datasets[4].data = data.flowApparentLoss;
     instances.main.update('active');
   }
 
